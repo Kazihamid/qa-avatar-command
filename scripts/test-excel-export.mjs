@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+import ExcelJS from 'exceljs';
+const code=ts.transpileModule(fs.readFileSync(new URL('../lib/export-test-cases.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replace("from 'exceljs'",'from '+JSON.stringify(import.meta.resolve('exceljs')));
+const {createTestCaseWorkbook}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const sample={id:'TC-1',title:'=Do not treat this as a formula',source:'Page 6',requirementIds:['1.1.7','4. Validation'],preconditions:'Configured rating scale',testData:'11.5',steps:'1. Enter 11.5\n2. Save',expected:'Display C',actual:'Displayed C',priority:'High',status:'Pass',evidence:'Evidence-1'};
+const bytes=await createTestCaseWorkbook([sample]);
+assert.equal(String.fromCharCode(...bytes.slice(0,2)),'PK');
+const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(Buffer.from(bytes));
+const sheet=workbook.getWorksheet('Test Cases');
+assert.equal(sheet.rowCount,2);assert.equal(sheet.getCell('D2').value,sample.title);assert.equal(sheet.getCell('D2').type,ExcelJS.ValueType.String);
+assert.equal(sheet.getCell('C2').value,'1.1.7\n4. Validation');assert.equal(sheet.getCell('G2').value,sample.steps);
+assert.equal(sheet.getCell('K2').value,'Pass');assert.equal(sheet.getCell('L2').value,'Evidence-1');
+assert.equal(sheet.views[0].ySplit,1);assert.ok(sheet.autoFilter);
+const empty=new ExcelJS.Workbook();await empty.xlsx.load(Buffer.from(await createTestCaseWorkbook([])));assert.equal(empty.getWorksheet('Test Cases').rowCount,1);
+console.log('Excel export checks passed: valid XLSX, literal text, multiline content, references, results and empty workbook.');
