@@ -24,3 +24,14 @@ For local cloud development, configure APP_USER and APP_PASSWORD in .dev.vars, a
 ## Verification
 
 The cloud build and Wrangler dry run passed. Local Workers tests verified authentication, cross-origin write rejection, empty workspace initialization, D1 workspace persistence, document uploads/downloads and requirement analysis. The deployed site returned 401 without credentials and 200 with valid credentials, including its workspace API.
+
+## Automatic GitHub deployment
+
+Every push to development runs .github/workflows/deploy-cloudflare.yml. The workflow installs locked dependencies, checks types, runs unit and local API tests, builds the Cloudflare target, applies pending D1 migrations and deploys the Worker. A failed check stops deployment. Pushes to main or other branches do not replace the live application. Manual runs are available from GitHub Actions on development.
+
+One-time setup: create a Cloudflare API token with Workers Scripts Edit and D1 Edit restricted to this account. Save it as the repository Actions secret CLOUDFLARE_API_TOKEN. The account ID is non-secret and is configured in the workflow. Do not use the app admin password or local Wrangler OAuth login as this token.
+
+Workflow runs: https://github.com/Kazihamid/qa-avatar-command/actions
+Secret setup: https://github.com/Kazihamid/qa-avatar-command/settings/secrets/actions
+
+The pipeline preserves the existing app password and database. CI receives the deployment token only during the deployment step. It uses a standard Ubuntu runner and does not enable paid Cloudflare features.

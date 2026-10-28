@@ -1,0 +1,64 @@
+name: Deploy QA Avatar Command
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/development'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: f7220aacea9afe040f91c754a4201d5e
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check types
+        run: npm run typecheck
+      - name: Run tests
+        run: npm test
+      - name: Verify local API integration
+        run: npm run test:review-api
+      - name: Build Cloudflare Worker and website
+        run: npm run build:cloudflare
+      - name: Apply migrations and deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo '::error::Add the CLOUDFLARE_API_TOKEN repository secret before deploying. See CLOUDFLARE.md.'
+            exit 1
+          fi
+          npx wrangler d1 migrations apply DB --remote
+          npx wrangler deploy --keep-vars
+      - name: Verify protected live site
+        run: |
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' --retry 3 --retry-delay 5 https://qa-avatar-command.kazihamidur.workers.dev/)
+          if [ "$status" != '401' ]; then
+            echo "::error::Expected private login (HTTP 401), received HTTP $status."
+            exit 1
+          fi
+      - name: Record deployment
+        run: |
+          echo '### Cloudflare deployment' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Live site: https://qa-avatar-command.kazihamidur.workers.dev' >> "$GITHUB_STEP_SUMMARY"
+          echo "Branch: development; commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
