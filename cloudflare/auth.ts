@@ -30,3 +30,13 @@ export async function authorized(request:Request,password:string,username='qa-ad
 export function loginPage(error=false):Response{
  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign In · QA Avatar Command</title><style>body{margin:0;background:#f3f6fc;color:#10243f;font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}.card{box-sizing:border-box;background:white;border:1px solid #dce5ef;border-radius:16px;padding:32px;width:min(440px,calc(100% - 32px));box-shadow:0 12px 35px #10243f0c}h1{font-size:25px;margin:0 0 8px}p{color:#63758f;margin:0 0 24px}label{display:block;font-weight:600;margin-top:18px}input{box-sizing:border-box;width:100%;font:inherit;padding:12px;border:1px solid #cbd7e8;border-radius:8px;margin-top:6px}input:focus{outline:2px solid #2454db;outline-offset:2px}button{width:100%;font:inherit;font-weight:600;background:#2454db;border:0;border-radius:8px;color:white;padding:12px;margin-top:24px;cursor:pointer}.error{background:#fff0f0;color:#991b1b;padding:12px;border-radius:8px;margin:16px 0}</style></head><body><main class="card"><h1>QA Avatar Command</h1><p>Sign in to your private QA workspace.</p>${error?'<div class="error" role="alert">Incorrect username or password. Please try again.</div>':''}<form method="post" action="/auth/login"><label for="username">Username</label><input id="username" name="username" autocomplete="username" maxlength="300" required autofocus><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" maxlength="1000" required><button type="submit">Sign In</button></form></main></body></html>`,{status:error?400:200,headers:{'Content-Type':'text/html; charset=utf-8'}});
 }
+
+export function safeWriteOrigin(request:Request):boolean {
+ if(['GET','HEAD'].includes(request.method))return true;
+ const origin=request.headers.get('origin'),site=request.headers.get('sec-fetch-site');
+ if(origin===new URL(request.url).origin)return true;
+ // Older login pages used no-referrer, which sends a null Origin on navigation POSTs.
+ if(origin==='null')return site==='same-origin';
+ if(origin)return false;
+ return site!=='cross-site'&&site!=='same-site';
+}
