@@ -52,12 +52,17 @@ jobs:
           npx wrangler deploy --keep-vars
       - name: Verify protected live site
         run: |
-          status=$(curl --silent --output login-check.html --write-out '%{http_code}' --retry 3 --retry-delay 5 https://qa-avatar-command.kazihamidur.workers.dev/)
-          if [ "$status" != '200' ]; then
-            echo "::error::Expected sign-in page (HTTP 200), received HTTP $status."
-            exit 1
-          fi
-          grep -q 'action="/auth/login"' login-check.html
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            status=$(curl --silent --output login-check.html --write-out '%{http_code}' "https://qa-avatar-command.kazihamidur.workers.dev/?deployment=$GITHUB_SHA&attempt=$attempt")
+            if [ "$status" = '200' ] && grep -q 'action="/auth/login"' login-check.html; then
+              echo 'Private sign-in page verified.'
+              exit 0
+            fi
+            echo "Waiting for deployment propagation (attempt $attempt, HTTP $status)."
+            sleep 5
+          done
+          echo '::error::The private sign-in page did not become available within one minute.'
+          exit 1
       - name: Record deployment
         run: |
           echo '### Cloudflare deployment' >> "$GITHUB_STEP_SUMMARY"
