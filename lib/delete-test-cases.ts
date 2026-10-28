@@ -5,8 +5,9 @@ export function deleteTestCases(project:Project,caseIds:readonly string[]):Proje
  const ids=new Set(caseIds.filter(id=>project.cases.some(c=>c.id===id)));
  if(!ids.size)return project;
  // A changed suite needs approval again before execution can continue.
- const base=stages.indexOf(workflow(project).stage)>stages.indexOf('Preparing Tests')
-  ?moveStage(project,'Preparing Tests','Deleted '+ids.size+' test case(s); review the updated test suite before execution.')
+ const target=project.cases.every(c=>ids.has(c.id))&&!project.requirementReview?'Analyzing':'Preparing Tests';
+ const base=stages.indexOf(workflow(project).stage)>stages.indexOf(target)
+  ?moveStage(project,target,'Deleted '+ids.size+' test case(s); review the updated test suite before execution.')
   :project;
  const w=workflow(base);
  return {...base,

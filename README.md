@@ -52,7 +52,9 @@ The file-handoff route from the hosted version still works under "Advanced" in t
 
 ## QA lifecycle and manual execution
 Work through the stages in the **Lifecycle** tab (Assigned -> Analyzing -> Preparing Tests -> Executing -> Investigating -> Retesting -> Regression -> Completed).
-Each stage has a checklist; you cannot skip ahead, and going back resets later approvals. Record results by hand in **Execution -> Manual execution** with an evidence reference.
+Each stage has a checklist; you cannot skip ahead, and going back resets later approvals.
+In Preparing Tests, enter the target environment and approve the suite. Build / WAR version is optional for manual testing.
+Clearing requirement analysis and deleting all cases returns the project to Analyzing. Older empty Preparing Tests records are repaired when the workspace loads. Record results by hand in **Execution -> Manual execution** with an evidence reference.
 
 ## Requirements and AI Review
 Attach a CR/SRS (PDF, DOCX, TXT, MD) on the **Requirements** tab and use **Analyze Requirements** (works offline, no key).
@@ -75,3 +77,6 @@ AI Review is optional and needs an OpenAI **API** account with credit (ChatGPT P
 
 ## For developers
 `npm run typecheck`, `npm test` (lifecycle rules), `npm run build`. The ported source matches hosted source v5 (commit 8636eacad57f); only sign-in, storage and the agent connection differ.
+
+## Export test cases to Excel
+On the Test Cases tab, choose **Export To Excel**. Selected cases are exported, including selected cases hidden by filters. If none are selected, the export includes all currently displayed cases. The .xlsx workbook contains requirement references, scenario titles, preconditions, data, steps, expected and actual results, priorities, statuses and evidence.
