@@ -4,7 +4,7 @@ Live site: https://qa-avatar-command.kazihamidur.workers.dev
 
 ## Hosting and access
 
-The cloud target uses a Worker with static assets and Cloudflare D1. It starts with an empty workspace, and does not import local project data or example results. Browser HTTP Basic authentication protects both the website and every API route. The default username is qa-admin; the password is a Wrangler secret. Local credentials are saved in data/cloudflare-login.txt and .dev.vars, both excluded from Git.
+The cloud target uses a Worker with static assets and Cloudflare D1. It starts with an empty workspace, and does not import local project data or example results. A browser sign-in page and signed 12-hour HttpOnly session cookie protect the website and every API route. The default username is qa-admin; the password is a Wrangler secret. Local credentials are saved in data/cloudflare-login.txt and .dev.vars, both excluded from Git.
 
 No paid Workers subscription was enabled. The deployment does not use R2, an external AI service, a custom domain, or a local agent connection. D1 Free requests stop if account quotas are reached; limits are shared with other applications in the same account. Keep the account on Workers Free to retain that behavior.
 
@@ -23,7 +23,7 @@ For local cloud development, configure APP_USER and APP_PASSWORD in .dev.vars, a
 
 ## Verification
 
-The cloud build and Wrangler dry run passed. Local Workers tests verified authentication, cross-origin write rejection, empty workspace initialization, D1 workspace persistence, document uploads/downloads and requirement analysis. The deployed site returned 401 without credentials and 200 with valid credentials, including its workspace API.
+The cloud build and Wrangler dry run passed. Local Workers tests verified authentication, cross-origin write rejection, empty workspace initialization, D1 workspace persistence, document uploads/downloads and requirement analysis. The sign-in page loads without an HTTP authentication challenge. Workspace APIs reject unsigned requests, and signed sessions permit access. Changing the admin password invalidates existing sessions.
 
 ## Automatic GitHub deployment
 

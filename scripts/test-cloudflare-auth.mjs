@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';import ts from 'typescript';import {webcrypto} from 'node:crypto';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 const code=ts.transpileModule(readFileSync(new URL('../cloudflare/auth.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
-const {authorized}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {authorized,createSession,loginPage}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const request=credentials=>new Request('https://example.test',{headers:credentials?{authorization:credentials}:{}});
 const basic=text=>'Basic '+Buffer.from(text).toString('base64');
 assert.equal(await authorized(request(),'test-secret'),false);
@@ -13,3 +13,15 @@ assert.equal(await authorized(request(basic('another-user:test-secret')),'test-s
 assert.equal(await authorized(request(basic('qa-admin:test-secret')),'test-secret'),true);
 assert.equal(await authorized(request(basic('owner:test-secret:colon')),'test-secret:colon','owner'),true);
 console.log('Cloudflare access checks passed: private-by-default, malformed credentials, wrong user/password and valid login.');
+
+const session=await createSession('test-secret');
+const cookieRequest=value=>new Request('https://example.test',{headers:{cookie:'qa_session='+value}});
+assert.equal(await authorized(cookieRequest(session),'test-secret'),true);
+assert.equal(await authorized(cookieRequest(session),'new-password'),false);
+assert.equal(await authorized(cookieRequest(session),'test-secret','other-user'),false);
+assert.equal(await authorized(cookieRequest(session.slice(0,-2)+'00'),'test-secret'),false);
+const expired=await createSession('test-secret','qa-admin',Date.now()-13*60*60*1000);
+assert.equal(await authorized(cookieRequest(expired),'test-secret'),false);
+const page=loginPage();assert.equal(page.status,200);assert.equal(page.headers.has('WWW-Authenticate'),false);assert.ok((await page.text()).includes('action="/auth/login"'));
+assert.equal(loginPage(true).status,400);
+console.log('Browser sign-in checks passed: normal login page, valid session, tampering, expiry and password rotation.');
