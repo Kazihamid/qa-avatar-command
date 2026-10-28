@@ -80,3 +80,6 @@ AI Review is optional and needs an OpenAI **API** account with credit (ChatGPT P
 
 ## Export test cases to Excel
 On the Test Cases tab, choose **Export To Excel**. Selected cases are exported, including selected cases hidden by filters. If none are selected, the export includes all currently displayed cases. The .xlsx workbook contains requirement references, scenario titles, preconditions, data, steps, expected and actual results, priorities, statuses and evidence.
+
+## Cloudflare hosting
+See [CLOUDFLARE.md](CLOUDFLARE.md) for the private deployment, free-tier storage limits and deployment commands. Local and cloud workspaces are separate.

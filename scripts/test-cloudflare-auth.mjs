@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';import ts from 'typescript';import {webcrypto} from 'node:crypto';
+if(!globalThis.crypto)globalThis.crypto=webcrypto;
+const code=ts.transpileModule(readFileSync(new URL('../cloudflare/auth.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+const {authorized}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const request=credentials=>new Request('https://example.test',{headers:credentials?{authorization:credentials}:{}});
+const basic=text=>'Basic '+Buffer.from(text).toString('base64');
+assert.equal(await authorized(request(),'test-secret'),false);
+assert.equal(await authorized(request(basic('qa-admin:test-secret')),''),false);
+assert.equal(await authorized(request('Basic !invalid!'),'test-secret'),false);
+assert.equal(await authorized(request(basic('qa-admin:wrong')),'test-secret'),false);
+assert.equal(await authorized(request(basic('another-user:test-secret')),'test-secret'),false);
+assert.equal(await authorized(request(basic('qa-admin:test-secret')),'test-secret'),true);
+assert.equal(await authorized(request(basic('owner:test-secret:colon')),'test-secret:colon','owner'),true);
+console.log('Cloudflare access checks passed: private-by-default, malformed credentials, wrong user/password and valid login.');

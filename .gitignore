@@ -2,3 +2,9 @@ node_modules
 dist
 data
 .env
+
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env.*
+!.env.example

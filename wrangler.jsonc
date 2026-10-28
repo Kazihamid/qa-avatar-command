@@ -1,0 +1,25 @@
+{
+  "name": "qa-avatar-command",
+  "main": "dist/cloudflare/worker.mjs",
+  "compatibility_date": "2026-10-26",
+  "workers_dev": true,
+  "preview_urls": false,
+  "no_bundle": true,
+  "assets": {
+    "directory": "dist/public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "qa-avatar-command-db",
+      "database_id": "a1a97ccf-88c9-49a6-8b84-c2a56f1b6db7",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "vars": {
+    "DOCUMENT_STORAGE": "d1"
+  }
+}
