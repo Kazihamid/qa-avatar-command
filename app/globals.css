@@ -213,3 +213,10 @@ body {
 .business-process-review summary { cursor: pointer; font-weight: 600; }
 .business-process-review p,.business-process-review li { font-size: 14px; line-height: 1.6; }
 .business-process-review ol,.business-process-review ul { padding-left: 22px; }
+
+/* Keep long project names, including underscore-separated names, inside their panels. */
+.project-rail { min-width: 0; }
+.project-link > span { flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.project-heading > div:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.project-heading > div:last-child { flex-shrink: 0; }
+.project-heading h2 { white-space: normal; overflow-wrap: anywhere; }
