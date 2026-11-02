@@ -10,12 +10,13 @@
     "setup": "npm install && npm run build",
     "build": "vite build && vite build -c vite.server.config.ts",
     "start": "node --env-file-if-exists=.env dist/server/index.mjs",
-    "test": "node scripts/test-lifecycle.mjs && node scripts/test-case-titles.mjs && node scripts/test-document-name.mjs && node scripts/test-excel-export.mjs && node scripts/test-cloudflare-auth.mjs",
+    "test": "node scripts/test-lifecycle.mjs && node scripts/test-case-titles.mjs && node scripts/test-document-name.mjs && node scripts/test-excel-export.mjs && node scripts/test-cloudflare-auth.mjs && node scripts/test-lazy-features.mjs",
     "typecheck": "tsc --noEmit",
     "test:review-api": "npm run build && node scripts/test-review-api.mjs",
-    "build:cloudflare": "vite build && vite build -c vite.cloudflare.config.ts",
+    "build:cloudflare": "vite build && vite build -c vite.cloudflare.config.ts && npm run test:assets",
     "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
-    "dev:cloudflare": "npm run build:cloudflare && wrangler dev"
+    "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
+    "test:assets": "node scripts/test-built-assets.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

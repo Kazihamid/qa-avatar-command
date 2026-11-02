@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import ts from 'typescript';
+const code=ts.transpileModule(fs.readFileSync(new URL('../lib/lazy-features.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+const {runFeature,currentFeatureModule}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const failed=()=>Promise.reject(new TypeError('error loading dynamically imported module: /assets/old.js'));
+const selected={name:'selected-requirements.pdf'};let executed=0;
+assert.equal(await runFeature('upload',failed,async module=>{executed++;assert.equal(selected.name,'selected-requirements.pdf');return module.extract(selected);},async()=>({extract:file=>file.name})),selected.name);
+assert.equal(executed,1);
+let recovered=0;await assert.rejects(runFeature('upload',async()=>({}),async()=>{throw new Error('Password-protected PDF');},async()=>{recovered++;}),/Password-protected/);assert.equal(recovered,0);
+let runs=0;assert.equal(await runFeature('upload',async()=>({}),async()=>{if(!runs++)throw new TypeError('Failed to fetch dynamically imported module');return 'retried';},async()=>({})),'retried');
+await assert.rejects(runFeature('upload',failed,failed,async()=>({})),/could not load this feature/);
+let requested='';const deps={origin:'https://app.example',fetch:async()=>Response.json({'lib/extract-document.ts':{file:'assets/extract-new.js'}}),importModule:async url=>{requested=url;return {current:true};}};
+assert.deepEqual(await currentFeatureModule('lib/extract-document.ts',deps),{current:true});assert.ok(requested.startsWith('https://app.example/assets/extract-new.js?feature-retry='));
+await assert.rejects(currentFeatureModule('upload',{...deps,fetch:async()=>Response.json({error:'Sign in'},{status:401})}),/session has expired/);
+await assert.rejects(currentFeatureModule('upload',{...deps,fetch:async()=>new Response('<html>Sign In</html>',{headers:{'Content-Type':'text/html'}})}),/session has expired/);
+await assert.rejects(currentFeatureModule('upload',{...deps,fetch:async()=>Response.json({upload:{file:'https://other.invalid/module.js'}})}),/Reload the page/);
+console.log('Lazy feature recovery checks passed: stale and nested imports retry without discarding the selected document; document errors stay unchanged; expired sessions and unsafe manifests are rejected.');

@@ -20,7 +20,7 @@ async function route(request:Request,bindings:Bindings):Promise<Response>{
   return new Response(null,{status:303,headers:{Location:'/', 'Set-Cookie':'qa_session='+session+'; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200'}});
  }
  if(path==='/auth/logout'&&method==='POST')return new Response(null,{status:303,headers:{Location:'/', 'Set-Cookie':'qa_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0'}});
- if(!await authorized(request,bindings.APP_PASSWORD,bindings.APP_USER))return path.startsWith('/api/')?Response.json({error:'Sign in to your workspace.'},{status:401}):loginPage();
+ if(!await authorized(request,bindings.APP_PASSWORD,bindings.APP_USER))return (path.startsWith('/api/')||path.startsWith('/assets/')||path==='/asset-manifest.json')?Response.json({error:'Sign in to your workspace.'},{status:401}):loginPage();
  if(path==='/auth/login')return new Response(null,{status:303,headers:{Location:'/'}});
  if(path==='/api/workspace'){if(method==='GET')return workspace.GET();if(method==='PUT')return workspace.PUT(request);}
  if(path==='/api/documents'){if(method==='GET')return documents.GET(request);if(method==='POST')return documents.POST(request);}
