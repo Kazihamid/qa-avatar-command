@@ -1,4 +1,4 @@
-import {MAX_DOCUMENT_CHARACTERS} from './document-limits';
+import {MAX_DOCUMENT_CHARACTERS,MAX_REVIEW_REQUIREMENTS} from './document-limits';
 import {analyzeBusinessProcess} from './process-analysis';
 import {extractRequirements} from './document-analysis';
 import {capitalizeRequirement} from './case-title';
@@ -55,7 +55,7 @@ export async function aiAnalyze(text:string,filename:string):Promise<Analysis>{
  const response=await sendWithRetry(send);
  if(!response.ok)throw await openAiFailure(response);
  const result:any=await response.json();if(result.status!=='completed')throw new Error('AI response was incomplete. Split the source into a smaller section.');const output=(result.output||[]).flatMap((item:any)=>item.content||[]).filter((item:any)=>item.type==='output_text').map((item:any)=>item.text).join('');if(!output)throw new Error('AI did not return a usable review.');const parsed=JSON.parse(output);
- if(!Array.isArray(parsed.requirements)||!Array.isArray(parsed.gaps)||!parsed.requirements.length||parsed.requirements.length>500||parsed.gaps.length>40)throw new Error('AI returned an invalid review.');
+ if(!Array.isArray(parsed.requirements)||!Array.isArray(parsed.gaps)||!parsed.requirements.length||parsed.requirements.length>MAX_REVIEW_REQUIREMENTS||parsed.gaps.length>40)throw new Error('AI returned an invalid review.');
  const source=(n:number)=>{if(!Number.isInteger(n)||n<1||!allowedLines.has(n))throw new Error('AI returned an invalid source reference.');return filename+' · line '+n;};const check=(v:any,max=10000)=>{if(typeof v!=='string'||v.length>max)throw new Error('AI returned invalid text.');return v;};
  const gapDetails=parsed.gaps.map((g:any)=>{if(!Array.isArray(g.sourceLines)||!g.sourceLines.length||g.sourceLines.length>60)throw new Error('AI returned invalid gap references.');const entries=g.sourceLines.map((n:number)=>{source(n);return identified.find(item=>item.line===n)!;});return {reference:[...new Set(entries.map((item:any)=>item.reference))].join(' / '),originalText:entries.map((item:any)=>item.originalText).join('\n\n'),question:check(g.question),kind:g.kind==='inconsistency'&&new Set(g.sourceLines).size>1?'inconsistency' as const:'clarification' as const};});
  const processReview=analyzeBusinessProcess(parsed.requirements.map((r:any,i:number)=>({id:'line-'+r.sourceLine+'-'+i,text:check(r.statement,3000),reference:identified.find(item=>item.line===r.sourceLine)?.reference||source(r.sourceLine)})),text);

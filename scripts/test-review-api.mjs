@@ -62,6 +62,14 @@ try{
  const original=await fetch(origin+'/api/documents/'+attached.document.id+'?download=1');assert.equal(await original.text(),fullText);
  const fullAnalysis=await call('/api/documents/analyze',{projectId:project.id,id:attached.document.id});assert.equal(fullAnalysis.status,200,JSON.stringify(fullAnalysis.data));assert.equal(fullAnalysis.data.analysis.reviewedCharacters,fullText.length);assert.equal(fullAnalysis.data.analysis.requirements.length,2);assert.ok(fullAnalysis.data.analysis.requirements[1].reference.includes('Page 101'));
  console.log('Large document checks passed: full text above 200,000 characters and 2 MB UTF-8 is stored, listed, reconstructed, downloaded and analyzed without manual splitting or truncation.');
+ const allPages='1.2.8 Requirements\n'+Array.from({length:78},(_,page)=>'[Page '+(page+1)+']\n'+Array.from({length:16},(_,item)=>(item+1)+'. The system must display field '+(page+1)+'-'+item+'.').join('\n')).join('\n');
+ const allPagesForm=new FormData();allPagesForm.append('projectId',project.id);allPagesForm.append('file',new Blob([allPages],{type:'text/plain'}),'78-pages.txt');allPagesForm.append('content',allPages);allPagesForm.append('warnings','[]');
+ const allPagesUpload=await fetch(origin+'/api/documents',{method:'POST',headers:{Origin:origin},body:allPagesForm});const allPagesDoc=await allPagesUpload.json();assert.equal(allPagesUpload.status,201);
+ const allPagesAnalysis=await call('/api/documents/analyze',{projectId:project.id,id:allPagesDoc.document.id});assert.equal(allPagesAnalysis.status,200);const all=allPagesAnalysis.data.analysis;assert.equal(all.requirements.length,78*16);assert.equal(all.pageCoverage.lastPage,78);
+ project.requirementReview={documentId:allPagesDoc.document.id,documentName:'78-pages.txt',mode:'rules',summary:all.summary,gaps:all.gaps,gapDetails:all.gapDetails,pageCoverage:all.pageCoverage,requirements:all.requirements.map(r=>({...r,included:true})),finalized:false};
+ saved=await call('/api/workspace',{state,revision:saved.data.revision},'PUT');assert.equal(saved.status,200,JSON.stringify(saved.data));
+ workspace=await call('/api/workspace',undefined,'GET');assert.equal(workspace.data.state.projects[0].requirementReview.requirements.length,78*16);assert.equal(workspace.data.state.projects[0].requirementReview.pageCoverage.pagesScanned,78);assert.ok(workspace.data.state.projects[0].requirementReview.requirements.at(-1).reference.startsWith('Page 78'));
+ console.log('Full review persistence checks passed: all 1,248 requirements across 78 pages survive saving and reloading.');
  console.log('Review API checks passed: analysis without cases, persisted checklist, finalization gate, selected-only generation, ignored injected requirements and explicit case save.');
 }finally{
  const closed=new Promise(r=>child.once('exit',r));child.kill();await closed;

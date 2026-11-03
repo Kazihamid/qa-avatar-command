@@ -39,3 +39,7 @@ The pipeline preserves the existing app password and database. CI receives the d
 ## Whole-document support
 
 Documents remain single files (up to 10 MB). Text extraction supports up to 2 million characters and no longer stops at 100 PDF pages. Large extracted text is stored in ordered D1 text chunks and reconstructed for preview and analysis; original downloads remain unchanged. Older attachments remain readable without re-uploading. Standard analysis runs in a browser worker so large documents do not consume the free Cloudflare Worker CPU allowance, and the UI remains responsive. No AI API is used for standard analysis.
+
+## Complete requirement reviews
+
+Standard analysis no longer returns only the first 500 requirements or first 200 gaps. All identified requirements and gaps are retained, subject to explicit review size limits. The review header reports the number of extracted pages scanned, the last extracted page, and how many pages contained identifiable requirements. Hidden process-summary data is not duplicated into newly saved reviews. Old saved reviews must be cleared and analyzed again to include requirements previously omitted by older versions.

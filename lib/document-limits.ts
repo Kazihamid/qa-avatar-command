@@ -6,3 +6,6 @@ export function documentTextChunks(text:string):string[]{
  for(let start=0;start<text.length;){let end=Math.min(start+DOCUMENT_TEXT_CHUNK_CHARACTERS,text.length);if(end<text.length&&/[\uD800-\uDBFF]/.test(text[end-1])&&/[\uDC00-\uDFFF]/.test(text[end]))end--;chunks.push(text.slice(start,end));start=end;}
  return chunks;
 }
+
+export const MAX_REVIEW_REQUIREMENTS=10_000;
+export const MAX_REVIEW_GAPS=20_000;

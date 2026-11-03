@@ -1,10 +1,11 @@
+import {MAX_REVIEW_REQUIREMENTS,MAX_REVIEW_GAPS} from './document-limits';
 import {validateProcessReview,type ProcessReview} from './process-analysis';
-import type {RequirementGap} from './document-analysis';
+import type {RequirementGap,PageCoverage} from './document-analysis';
 import type {Case} from './model';
 import {actionTitle} from './case-title';
 
 export type ReviewRequirement={reference?:string;id:string;statement:string;source:string;included:boolean};
-export type RequirementReview={testCasesWrittenFor?:string;processReview?:ProcessReview;gapDetails?:RequirementGap[];documentId:string;documentName:string;mode:'rules'|'ai';summary:string;gaps:string[];requirements:ReviewRequirement[];finalized:boolean};
+export type RequirementReview={pageCoverage?:PageCoverage;testCasesWrittenFor?:string;processReview?:ProcessReview;gapDetails?:RequirementGap[];documentId:string;documentName:string;mode:'rules'|'ai';summary:string;gaps:string[];requirements:ReviewRequirement[];finalized:boolean};
 
 export function requirementCaseSignature(review:RequirementReview):string {
  return JSON.stringify([review.documentId,review.requirements.filter(r=>r.included).map(r=>[r.id,r.statement]).sort((a,b)=>a[0].localeCompare(b[0]))]);
@@ -18,10 +19,11 @@ export function hasWrittenRequirementCases(review:RequirementReview,cases:Case[]
 export function validateRequirementReview(value:any):asserts value is RequirementReview {
  const text=(v:unknown,max=20000)=>typeof v==='string'&&v.length<=max;
  if(value?.testCasesWrittenFor!==undefined&&!text(value.testCasesWrittenFor,2000000))throw new Error('Invalid test case requirement signature.');
- if(!value||!text(value.documentId,300)||!text(value.documentName,500)||!['rules','ai'].includes(value.mode)||!text(value.summary)||typeof value.finalized!=='boolean'||!Array.isArray(value.gaps)||value.gaps.length>200||value.gaps.some((g:unknown)=>!text(g))||!Array.isArray(value.requirements)||value.requirements.length>500||new Set(value.requirements.map((r:any)=>r.id)).size!==value.requirements.length)throw new Error('Invalid requirement review.');
+ if(!value||!text(value.documentId,300)||!text(value.documentName,500)||!['rules','ai'].includes(value.mode)||!text(value.summary)||typeof value.finalized!=='boolean'||!Array.isArray(value.gaps)||value.gaps.length>MAX_REVIEW_GAPS||value.gaps.some((g:unknown)=>!text(g))||!Array.isArray(value.requirements)||value.requirements.length>MAX_REVIEW_REQUIREMENTS||new Set(value.requirements.map((r:any)=>r.id)).size!==value.requirements.length)throw new Error('Invalid requirement review.');
+ if(value.pageCoverage!==undefined){const coverage=value.pageCoverage;if(!coverage||!Number.isSafeInteger(coverage.pagesScanned)||coverage.pagesScanned<1||!Number.isSafeInteger(coverage.lastPage)||coverage.lastPage<coverage.pagesScanned||!Array.isArray(coverage.pagesWithRequirements)||coverage.pagesWithRequirements.some((page:unknown)=>!Number.isSafeInteger(page)||Number(page)<1||Number(page)>coverage.lastPage))throw new Error('Invalid document page coverage.');}
  if(value.processReview!==undefined)validateProcessReview(value.processReview);
- if(value.gapDetails!==undefined&&(!Array.isArray(value.gapDetails)||value.gapDetails.length>200||value.gapDetails.some((gap:any)=>!gap||!text(gap.reference,3000)||!text(gap.originalText,20000)||!text(gap.question,20000))))throw new Error('Invalid gap source details.');
- for(const r of value.requirements)if((r.reference!==undefined&&!text(r.reference,300))||!text(r.id,100)||!r.id||!text(r.statement,3000)||!r.statement.trim()||!text(r.source,3000)||typeof r.included!=='boolean')throw new Error('Each requirement needs a statement and source reference.');
+ if(value.gapDetails!==undefined&&(!Array.isArray(value.gapDetails)||value.gapDetails.length>MAX_REVIEW_GAPS||value.gapDetails.some((gap:any)=>!gap||!text(gap.reference,3000)||!text(gap.originalText,20000)||!text(gap.question,20000))))throw new Error('Invalid gap source details.');
+ for(const r of value.requirements)if((r.reference!==undefined&&!text(r.reference,3000))||!text(r.id,100)||!r.id||!text(r.statement,3000)||!r.statement.trim()||!text(r.source,3000)||typeof r.included!=='boolean')throw new Error('Each requirement needs a statement and source reference.');
  if(value.finalized&&!value.requirements.some((r:ReviewRequirement)=>r.included))throw new Error('Select at least one requirement before finalizing.');
 }
 

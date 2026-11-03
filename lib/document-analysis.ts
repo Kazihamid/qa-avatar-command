@@ -1,10 +1,11 @@
-import {MAX_DOCUMENT_CHARACTERS} from './document-limits';
+import {MAX_DOCUMENT_CHARACTERS,MAX_REVIEW_REQUIREMENTS} from './document-limits';
 import {analyzeBusinessProcess,type ProcessReview} from './process-analysis';
 import {actionExample,capitalizeRequirement} from './case-title';
 import type {Case} from './model';
 export type Requirement={id:string;reference?:string;statement:string;source:string};
 export type RequirementGap={reference:string;originalText:string;question:string;kind?:'inconsistency'|'clarification'};
-export type Analysis={processReview?:ProcessReview;gapDetails?:RequirementGap[];mode:'rules'|'ai';summary?:string;requirements:Requirement[];gaps:string[];regressionSuggestions?:string[];cases:Case[];partial:boolean;reviewedCharacters:number};
+export type PageCoverage={pagesScanned:number;lastPage:number;pagesWithRequirements:number[]};
+export type Analysis={pageCoverage?:PageCoverage;processReview?:ProcessReview;gapDetails?:RequirementGap[];mode:'rules'|'ai';summary?:string;requirements:Requirement[];gaps:string[];regressionSuggestions?:string[];cases:Case[];partial:boolean;reviewedCharacters:number};
 // Lines that are structure or legal boilerplate, not testable requirements.
 const BOILERPLATE=/\b(confidential(ity)?|proprietary|copyright|all rights reserved|intended (solely )?for|unauthori[sz]ed (use|disclosure|copying)|do not (copy|distribute|disclose)|without (the )?(prior )?(written )?(consent|permission)|disclaimer|document (control|history|number|id)|version history|revision history|change (log|history)|prepared by|reviewed by|approved by|distribution list)\b/i;
 const LEGAL_NOTICE=/\b(all rights reserved|prior written (?:consent|permission)|must not be disclosed|copyright|this document (?:and|is|may)|without.*permission.*(?:document|BRAC))\b/i;
@@ -102,7 +103,7 @@ export function extractRequirements(text:string,filename:string,incompleteGaps:s
   const item=prefix?.[1]||'';
   const location=reference(firstLine,i+1,item);
   if(unfinished(body)||/^(?:merged|shown|displayed|must|shall|will|can either)\b/i.test(body)){
-   if(incompleteGaps.length<100)incompleteGaps.push(location+': What should happen here? The text stops at “'+body+'”. Add the rest of the rule so it can be reviewed.');
+   incompleteGaps.push(location+': What should happen here? The text stops at “'+body+'”. Add the rest of the rule so it can be reviewed.');
    continue;
   }
   if(body.length<12||body.length>3000||metadata(body))continue;
@@ -117,7 +118,8 @@ export function analyzeRequirements(text:string,filename:string):Analysis {
  if(typeof text!=='string'||!text.trim())throw new Error('No text available for analysis.');
  if(text.length>MAX_DOCUMENT_CHARACTERS)throw new Error('This document exceeds the supported 2 million extracted characters.');
  const incompleteGaps:string[]=[];
- const identified=extractRequirements(text,filename,incompleteGaps),selected=identified.slice(0,500),partial=identified.length>500;
+ const identified=extractRequirements(text,filename,incompleteGaps),selected=identified,partial=false;
+ if(identified.length>MAX_REVIEW_REQUIREMENTS)throw new Error('This review contains more than 10,000 requirements.');
  if(!selected.length&&!incompleteGaps.length)throw new Error('No explicit requirements found. Add requirement statements or a Requirements / Business Rules section; titles and descriptions are not drafted.');
  const requirements=selected.map(r=>({id:'line-'+r.line,reference:r.reference,statement:r.text,source:r.source}));
  const gaps:string[]=[...incompleteGaps];
@@ -138,14 +140,16 @@ export function analyzeRequirements(text:string,filename:string):Analysis {
    gaps.push(gapLabel(r.reference)+(condition?'What should happen if '+condition.replace(/[.]$/,'')+'?':'What should the user see when this action fails?')+' Specify the message, whether entered data is kept, and how the user can try again. Requirement: '+quote(s));
   }
  }
- for(let i=0;i<requirements.length;i++)for(let j=i+1;j<requirements.length;j++){
-  const normalize=(value:string)=>value.toLowerCase().replace(/\b(must|shall|should|will)\s+(?:not\s+)?/g,'').replace(/\W/g,'');
-  const first=requirements[i],second=requirements[j];
-  if(normalize(first.statement)===normalize(second.statement)&&/\bnot\b/i.test(first.statement)!==/\bnot\b/i.test(second.statement))gaps.push(first.reference+' and '+second.reference+' disagree: '+quote(first.statement)+' / '+quote(second.statement)+'. Which rule should the system follow?');
+ const conflicting=new Map<string,{positive?:Requirement;negative?:Requirement;reported?:boolean}>();
+ for(const item of requirements){const normalized=item.statement.toLowerCase().replace(/\b(must|shall|should|will)\s+(?:not\s+)?/g,'').replace(/\W/g,'');const group=conflicting.get(normalized)||{};const kind=/\bnot\b/i.test(item.statement)?'negative':'positive';group[kind]??=item;
+  if(group.positive&&group.negative&&!group.reported){const first=group.positive,second=group.negative;gaps.push(first.reference+' and '+second.reference+' disagree: '+quote(first.statement)+' / '+quote(second.statement)+'. Which rule should the system follow?');group.reported=true;}conflicting.set(normalized,group);
  }
- const summary=partial?'Found '+identified.length+' possible requirements. This review covers the first '+requirements.length+'. Review the remaining '+(identified.length-requirements.length)+' in a separate section or file. No test cases have been created.':'Found '+requirements.length+' requirements to review. Check the questions below, then edit and finalize the list. No test cases have been created.';
+ const pages=[...new Set([...text.matchAll(/^\[Page (\d+)\]\s*$/gm)].map(match=>Number(match[1])))];
+ const requirementPages=[...new Set(requirements.map(r=>Number(r.reference?.match(/^Page (\d+)/)?.[1])).filter(page=>page>0))].sort((a,b)=>a-b);
+ const pageCoverage=pages.length?{pagesScanned:pages.length,lastPage:Math.max(...pages),pagesWithRequirements:requirementPages}:undefined;
+ const summary=(pageCoverage?'Scanned all '+pageCoverage.pagesScanned+' extracted pages. ':'')+'Found '+requirements.length+' requirements to review. Check the questions below, then edit and finalize the list. No test cases have been created.';
  const sourceLines=text.split('\n');
- const gapDetails=gaps.slice(0,200).map(gap=>{
+ const gapDetails=gaps.map(gap=>{
   const related=identified.filter(item=>gap.startsWith(item.reference+':')||gap.startsWith(item.reference+' and ')||gap.includes(' and '+item.reference+' disagree:'));
   const location=gap.match(/^(.*?Line \d+(?:[–-]\d+)?): /)?.[1]||'';
   const reference=related.length?related.map(item=>item.reference).join(' / '):location;
@@ -163,7 +167,7 @@ export function analyzeRequirements(text:string,filename:string):Analysis {
   return {reference,originalText,question,kind:related.length>1?'inconsistency' as const:'clarification' as const};
  });
  const processReview=analyzeBusinessProcess(identified.map(item=>({id:'line-'+item.line,text:item.text,reference:item.reference})),text);
- return {mode:'rules',processReview,summary,requirements,gaps:gaps.slice(0,200),gapDetails,cases:[],partial,reviewedCharacters:text.length};
+ return {mode:'rules',pageCoverage,processReview,summary,requirements,gaps:gaps,gapDetails,cases:[],partial,reviewedCharacters:text.length};
 }
 export const allowedExtensions=['pdf','docx','txt','md'];
 export function validateUpload(name:string,size:number,bytes:Uint8Array):{extension:string;mime:string}{

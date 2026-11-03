@@ -54,7 +54,7 @@ assert.throws(()=>analyzeRequirements('Test Title CR_Duplicate NID Allow During 
 assert.equal(actionTitle('The system must display matching NID details when a duplicate is entered.'),'Display matching NID details');
 assert.ok(actionTitle('Display '+Array(30).fill('details').join(' ')).length<=90);
 console.log('Requirement analysis checks passed: zero generated cases, contextual text excluded, ambiguity, conflict and incomplete behavior identified.');
-const reviewModule=compile('../lib/requirement-review.ts').replace("'./process-analysis'",JSON.stringify(processUrl)).replace("'./case-title'",JSON.stringify(titleUrl));
+const reviewModule=compile('../lib/requirement-review.ts').replace("'./document-limits'",JSON.stringify(limitsUrl)).replace("'./process-analysis'",JSON.stringify(processUrl)).replace("'./case-title'",JSON.stringify(titleUrl));
 const {writeReviewedTestCases,validateRequirementReview,requirementCaseSignature,hasWrittenRequirementCases}=await import(moduleUrl(reviewModule));
 const review={documentId:'doc-1',documentName:'CR.pdf',mode:'rules',summary:'Reviewed',gaps:[],requirements:analysis.requirements.map((r,index)=>({...r,included:index===0})),finalized:false};
 assert.throws(()=>writeReviewedTestCases(review),/Finalize/);
@@ -247,3 +247,10 @@ const {documentTextChunks,DOCUMENT_TEXT_CHUNK_CHARACTERS}=await import(limitsUrl
 const unicodeText='a'.repeat(DOCUMENT_TEXT_CHUNK_CHARACTERS-1)+'😀'+'b'.repeat(200000);
 const unicodeChunks=documentTextChunks(unicodeText);assert.equal(unicodeChunks.join(''),unicodeText);for(const chunk of unicodeChunks)assert.equal(Buffer.from(chunk).toString('utf8'),chunk);
 console.log('Large text chunk checks passed: automatic chunking preserves Unicode across boundaries.');
+
+const completePages=Array.from({length:78},(_,page)=>'[Page '+(page+1)+']\n'+Array.from({length:21},(_,item)=>(item+1)+'. The system must '+(item<16?'display field '+(page+1)+'-'+item:'process request '+(page+1)+'-'+item+' quickly')+'.').join('\n')).join('\n');
+const completeReview=analyzeRequirements('1.2.8 Requirements\n'+completePages,'complete-78-pages.pdf');
+assert.equal(completeReview.requirements.length,78*21);assert.equal(completeReview.partial,false);assert.equal(completeReview.pageCoverage.pagesScanned,78);assert.equal(completeReview.pageCoverage.lastPage,78);assert.equal(completeReview.pageCoverage.pagesWithRequirements.length,78);assert.ok(completeReview.requirements.at(-1).reference.startsWith('Page 78'));
+assert.equal(completeReview.gaps.length,78*5);assert.equal(completeReview.gapDetails.length,78*5);assert.ok(completeReview.gapDetails.at(-1).reference.startsWith('Page 78'));
+validateRequirementReview({documentId:'complete',documentName:'complete-78-pages.pdf',mode:'rules',summary:completeReview.summary,pageCoverage:completeReview.pageCoverage,gaps:completeReview.gaps,gapDetails:completeReview.gapDetails,requirements:completeReview.requirements.map(r=>({...r,included:true})),finalized:false});
+console.log('Full 78-page review checks passed: all 1,638 requirements and 390 gaps retained through page 78, without truncation.');
