@@ -1,3 +1,4 @@
+import {MAX_DOCUMENT_CHARACTERS} from './document-limits';
 import {analyzeBusinessProcess,type ProcessReview} from './process-analysis';
 import {actionExample,capitalizeRequirement} from './case-title';
 import type {Case} from './model';
@@ -114,7 +115,7 @@ export function extractRequirements(text:string,filename:string,incompleteGaps:s
 }
 export function analyzeRequirements(text:string,filename:string):Analysis {
  if(typeof text!=='string'||!text.trim())throw new Error('No text available for analysis.');
- if(text.length>200000)throw new Error('Document text exceeds 200,000 characters. Split the document into smaller sections.');
+ if(text.length>MAX_DOCUMENT_CHARACTERS)throw new Error('This document exceeds the supported 2 million extracted characters.');
  const incompleteGaps:string[]=[];
  const identified=extractRequirements(text,filename,incompleteGaps),selected=identified.slice(0,500),partial=identified.length>500;
  if(!selected.length&&!incompleteGaps.length)throw new Error('No explicit requirements found. Add requirement statements or a Requirements / Business Rules section; titles and descriptions are not drafted.');
@@ -143,12 +144,13 @@ export function analyzeRequirements(text:string,filename:string):Analysis {
   if(normalize(first.statement)===normalize(second.statement)&&/\bnot\b/i.test(first.statement)!==/\bnot\b/i.test(second.statement))gaps.push(first.reference+' and '+second.reference+' disagree: '+quote(first.statement)+' / '+quote(second.statement)+'. Which rule should the system follow?');
  }
  const summary=partial?'Found '+identified.length+' possible requirements. This review covers the first '+requirements.length+'. Review the remaining '+(identified.length-requirements.length)+' in a separate section or file. No test cases have been created.':'Found '+requirements.length+' requirements to review. Check the questions below, then edit and finalize the list. No test cases have been created.';
+ const sourceLines=text.split('\n');
  const gapDetails=gaps.slice(0,200).map(gap=>{
   const related=identified.filter(item=>gap.startsWith(item.reference+':')||gap.startsWith(item.reference+' and ')||gap.includes(' and '+item.reference+' disagree:'));
   const location=gap.match(/^(.*?Line \d+(?:[–-]\d+)?): /)?.[1]||'';
   const reference=related.length?related.map(item=>item.reference).join(' / '):location;
   const range=location.match(/Line (\d+)(?:[–-](\d+))?/);
-  const originalText=related.length?related.map(item=>item.originalText).join('\n\n'):range?text.split('\n').slice(Number(range[1])-1,Number(range[2]||range[1])).join('\n').trim():'';
+  const originalText=related.length?related.map(item=>item.originalText).join('\n\n'):range?sourceLines.slice(Number(range[1])-1,Number(range[2]||range[1])).join('\n').trim():'';
   let question=gap.startsWith(reference+': ')?gap.slice(reference.length+2):location?gap.slice(location.length+2):gap;
   question=question.replace(/\s+Requirement:.*$/s,'');
   if(!related.length&&/text stops at/.test(question)){

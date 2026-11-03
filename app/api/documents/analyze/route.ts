@@ -1,6 +1,6 @@
 import {getChatGPTUser} from '@/app/chatgpt-auth';
 import {db} from '@/lib/db';
-import {sameOrigin,type DocumentRow} from '@/lib/document-store';
+import {sameOrigin,readDocumentText,type DocumentRow} from '@/lib/document-store';
 import {aiAnalyze,aiConfigured} from '@/lib/ai-document-analysis';
 import {analyzeRequirements} from '@/lib/document-analysis';
 import {writeReviewedTestCases} from '@/lib/requirement-review';
@@ -23,7 +23,7 @@ export async function POST(request:Request){
   if(input.id!=='pasted'){
    const row=await db().prepare('SELECT * FROM qa_documents WHERE id=? AND owner=?').bind(input.id,user.userId).first<DocumentRow>();
    if(!row||row.project_id!==project.id)return Response.json({error:'Attachment not found'},{status:404});
-   content=row.content;filename=row.name+' [attachment '+row.id.slice(0,8)+']';
+   content=await readDocumentText(row);filename=row.name+' [attachment '+row.id.slice(0,8)+']';
   }
   if(!content.replace(/\[Page \d+\]/g,'').trim())return Response.json({error:'No readable text found. Use a text-based document or paste requirements.'},{status:422});
   if(input.mode==='ai'){

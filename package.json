@@ -16,7 +16,7 @@
     "build:cloudflare": "vite build && vite build -c vite.cloudflare.config.ts && npm run test:assets",
     "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
     "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
-    "test:assets": "node scripts/test-built-assets.mjs"
+    "test:assets": "node scripts/test-built-assets.mjs && node scripts/test-analysis-worker.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

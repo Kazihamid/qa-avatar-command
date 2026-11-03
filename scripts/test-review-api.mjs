@@ -53,6 +53,15 @@ try{
  assert.equal(workspace.data.state.projects[0].cases.length,generated.data.cases.length);
  assert.ok(workspace.data.state.projects[0].requirements.includes('numeric NID'));
  assert.equal((await analyze()).status,200);
+ const fullText='The system must retain the first requirement.\n'+'文档说明\n'.repeat(170000)+'[Page 101]\nThe system must retain the final requirement.';
+ assert.ok(fullText.length>200000);assert.ok(Buffer.byteLength(fullText)>2*1024*1024);
+ const upload=new FormData();upload.append('projectId',project.id);upload.append('file',new Blob([fullText],{type:'text/plain'}),'full-document.txt');upload.append('content',fullText);upload.append('warnings','[]');
+ const uploaded=await fetch(origin+'/api/documents',{method:'POST',headers:{Origin:origin},body:upload});const attached=await uploaded.json();assert.equal(uploaded.status,201,JSON.stringify(attached));assert.equal(attached.document.characters,fullText.length);
+ const preview=await call('/api/documents/'+attached.document.id,undefined,'GET');assert.equal(preview.status,200);assert.equal(preview.data.document.text,fullText);assert.equal(preview.data.document.characters,fullText.length);
+ const documents=await call('/api/documents?projectId='+project.id,undefined,'GET');assert.equal(documents.data.documents[0].characters,fullText.length);
+ const original=await fetch(origin+'/api/documents/'+attached.document.id+'?download=1');assert.equal(await original.text(),fullText);
+ const fullAnalysis=await call('/api/documents/analyze',{projectId:project.id,id:attached.document.id});assert.equal(fullAnalysis.status,200,JSON.stringify(fullAnalysis.data));assert.equal(fullAnalysis.data.analysis.reviewedCharacters,fullText.length);assert.equal(fullAnalysis.data.analysis.requirements.length,2);assert.ok(fullAnalysis.data.analysis.requirements[1].reference.includes('Page 101'));
+ console.log('Large document checks passed: full text above 200,000 characters and 2 MB UTF-8 is stored, listed, reconstructed, downloaded and analyzed without manual splitting or truncation.');
  console.log('Review API checks passed: analysis without cases, persisted checklist, finalization gate, selected-only generation, ignored injected requirements and explicit case save.');
 }finally{
  const closed=new Promise(r=>child.once('exit',r));child.kill();await closed;

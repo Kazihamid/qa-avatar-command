@@ -1,5 +1,5 @@
 import type {Case} from './model';
-const moduleFailure=(error:unknown)=>error instanceof Error&&/dynamically imported module|module script failed|failed to fetch.*module|unable to preload (?:css|module)|loading chunk [\w-]+ failed/i.test(error.message);
+const moduleFailure=(error:unknown)=>error instanceof Error&&/dynamically imported module|module script failed|failed to fetch.*module|unable to preload (?:css|module)|loading chunk [\w-]+ failed|analysis worker could not load/i.test(error.message);
 type Dependencies={fetch:typeof fetch;importModule:(url:string)=>Promise<unknown>;origin:string};
 export async function currentFeatureModule(name:string,dependencies?:Dependencies):Promise<unknown>{
  const origin=dependencies?.origin||window.location.origin;
@@ -22,3 +22,5 @@ export async function runFeature<M,T>(name:string,load:()=>Promise<M>,run:(modul
 }
 export function extractRequirementsDocument(file:File){return runFeature('lib/extract-document.ts',()=>import('./extract-document'),module=>module.extractDocument(file));}
 export function downloadTestCases(cases:Case[],projectName:string){return runFeature('lib/export-test-cases.ts',()=>import('./export-test-cases'),module=>module.exportTestCases(cases,projectName));}
+
+export function analyzeRequirementsText(text:string,filename:string){return runFeature('lib/browser-document-analysis.ts',()=>import('./browser-document-analysis'),module=>module.analyzeInBrowser(text,filename));}

@@ -4,10 +4,11 @@ import ts from 'typescript';
 
 const compile=path=>ts.transpileModule(readFileSync(new URL(path,import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
 const moduleUrl=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
+const limitsUrl=moduleUrl(compile('../lib/document-limits.ts'));
 const processUrl=moduleUrl(compile('../lib/process-analysis.ts'));
 const titleUrl=moduleUrl(compile('../lib/case-title.ts'));
 const {actionTitle,actionExample,capitalizeRequirement}=await import(titleUrl);
-const {analyzeRequirements}=await import(moduleUrl(compile('../lib/document-analysis.ts').replace("'./process-analysis'",JSON.stringify(processUrl)).replace("'./case-title'",JSON.stringify(titleUrl))));
+const {analyzeRequirements}=await import(moduleUrl(compile('../lib/document-analysis.ts').replace("'./document-limits'",JSON.stringify(limitsUrl)).replace("'./process-analysis'",JSON.stringify(processUrl)).replace("'./case-title'",JSON.stringify(titleUrl))));
 
 assert.equal(actionTitle('Consolidated NID'),'Test Consolidated NID');
 assert.equal(actionTitle('REQ-001 · Reject nonnumeric input'),'Reject nonnumeric input');
@@ -241,3 +242,8 @@ assert.equal(fullReview.requirements.length,80);assert.equal(fullReview.partial,
 assert.equal(new Set(fullReview.processReview.scenarios.flatMap(s=>s.requirementIds)).size,80);
 assert.throws(()=>validateProcessReview({}),/Invalid business process/);
 console.log('Business process checks passed: 14 process areas, grouped complete activities, retained alternate/exception evidence, all requirements covered and no gaps for N/A or document administration.');
+
+const {documentTextChunks,DOCUMENT_TEXT_CHUNK_CHARACTERS}=await import(limitsUrl);
+const unicodeText='a'.repeat(DOCUMENT_TEXT_CHUNK_CHARACTERS-1)+'😀'+'b'.repeat(200000);
+const unicodeChunks=documentTextChunks(unicodeText);assert.equal(unicodeChunks.join(''),unicodeText);for(const chunk of unicodeChunks)assert.equal(Buffer.from(chunk).toString('utf8'),chunk);
+console.log('Large text chunk checks passed: automatic chunking preserves Unicode across boundaries.');
