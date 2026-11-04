@@ -67,6 +67,16 @@ assert.equal(hasWrittenRequirementCases({...written,requirements:[...written.req
 assert.equal(hasWrittenRequirementCases({...written,requirements:written.requirements.map(r=>({...r,statement:r.statement+' Changed.'}))},[]),false);
 assert.equal(hasWrittenRequirementCases(final,writeReviewedTestCases(final)),true);
 const cases=writeReviewedTestCases(final);
+const bankRules=[
+ 'If Bank Name is missing, the system will prevent Save and display the required-field validation.',
+ 'If Branch Name is missing, the system will prevent Save and display the required-field validation.',
+ 'If Account Number is missing, the system will prevent Save and display the required-field validation.',
+ 'Only users with the required permission can create bank information.',
+ 'Users without the required permission will not be allowed to delete bank information.'
+];
+const bankCases=writeReviewedTestCases({...final,requirements:bankRules.map((statement,i)=>({id:'bank-'+i,statement,source:'Page 5',included:true}))});
+assert.equal(bankCases.length,bankRules.length);
+assert.deepEqual(bankCases.map(c=>c.expected),bankRules);
 const coverageCases=writeReviewedTestCases({...final,requirements:[
  {id:'1',statement:'\uF081 The system must display a retry message when the request times out.',source:'Page 2',included:true},
  {id:'2',statement:'The system must display an empty list when there are no matches.',source:'Page 3',included:true},

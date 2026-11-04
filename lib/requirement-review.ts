@@ -42,9 +42,10 @@ export function writeReviewedTestCases(review:RequirementReview):Case[] {
  for(const r of review.requirements.filter(r=>r.included)){
   const label=r.reference||r.id;
   const statement=cleanCaseText(r.statement).replace(/^\d+(?:\.\d+)*[.)]?\s+/,'');
-  const subject=statement.match(/\b(NID|email|password|phone|date|amount|file|profile|permission|record)\b/i)?.[0]||'required behavior';
+  const namedSubject=statement.match(/\b(NID|email|password|phone|date|amount|file|profile|permission|record)\b/i)?.[0];
+  const subject=namedSubject||'required behavior';
   const quoted=[...statement.matchAll(/[“"‘']([^“”"‘’']+)[”"’']/g)].map(m=>m[1]);
-  const prohibited=/\b(must not|shall not|cannot|not allowed|reject|prevent|block)\b/i.test(statement);
+  const prohibited=/\b(must not|shall not|cannot|not allowed|will not|may not|reject|prevent|block)\b/i.test(statement);
   if(!/[\p{L}\p{N}]/u.test(statement))continue;
   const regression=/\b(?:remain unchanged|continue to|as before|retain existing|preserve existing|backward compatibility)\b/i.test(statement);
   const exception=/\b(?:timeout|times out|fails?|failure|unavailable|exception)\b/i.test(statement)&&/\b(?:if|when|on|in case of)\b/i.test(statement);
@@ -54,7 +55,7 @@ export function writeReviewedTestCases(review:RequirementReview):Case[] {
   add(r,kind,title,quoted.length?'Values listed in the requirement: '+quoted.join(', '):'The requirement does not give example values. Choose inputs that reproduce the condition described in the requirement.',
    '1. Review requirement '+label+': '+statement+'\n2. Carry out the action in this requirement using the inputs and conditions described above.\n3. Check that the result matches the requirement.',statement);
   if(/\b(numeric|only digits)\b/i.test(statement))add(r,'negative','Reject nonnumeric '+subject,'Letters and symbols in the numeric '+subject+' field.','1. Enter nonnumeric content in '+subject+'.\n2. Carry out the action described in '+label+'.\n3. Check how the system handles the invalid value.','The system rejects letters and symbols, as required by '+label+': '+statement);
-  if(/\b(mandatory|required)\b/i.test(statement))add(r,'negative','Reject missing '+subject,'Leave the required '+subject+' value empty.','1. Omit the required '+subject+' value.\n2. Carry out the action described in '+r.id+'.\n3. Check that the system asks for the missing value.','The system requires a value for this field. Requirement: '+statement);
+  if(namedSubject&&!prohibited&&/\b(mandatory|required)\b/i.test(statement)&&!/\b(?:permission|missing|omitted|empty|blank)\b/i.test(statement))add(r,'negative','Reject missing '+subject,'Leave the required '+subject+' value empty.','1. Omit the required '+subject+' value.\n2. Carry out the action described in '+r.id+'.\n3. Check that the system asks for the missing value.','The system requires a value for this field. Requirement: '+statement);
 
   const threshold=statement.match(/\b(maximum|minimum|max|min|up to)\s+(?:length\s+)?(?:of\s+)?(\d+)\s*(digits|characters|items|records|files|days)?\b/i);
   if(threshold&&threshold[3]){const n=Number(threshold[2]),maximum=/^(maximum|max|up to)$/i.test(threshold[1]),unit=threshold[3]||'units';
