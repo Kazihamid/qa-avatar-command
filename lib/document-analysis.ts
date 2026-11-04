@@ -1,6 +1,6 @@
 import {MAX_DOCUMENT_CHARACTERS,MAX_REVIEW_REQUIREMENTS} from './document-limits';
 import {analyzeBusinessProcess,type ProcessReview} from './process-analysis';
-import {actionExample,capitalizeRequirement} from './case-title';
+import {actionExample,capitalizeRequirement,cleanCaseText} from './case-title';
 import type {Case} from './model';
 export type Requirement={id:string;reference?:string;statement:string;source:string};
 export type RequirementGap={reference:string;originalText:string;question:string;kind?:'inconsistency'|'clarification'};
@@ -21,7 +21,7 @@ function rewriteRequirement(value:string,context:string):string {
  result=result.replace(/^User\s+(?:will|shall|must)\s+input numeric digits in the ([^.]+)[.]?/i,'Users must enter numbers in the $1.').replace(/^(?:the\s+)?system\s+(?:will|shall)\s+/i,'The system must ').replace(/^User\s+(will|can|may|must)\s+/i,'Users $1 ');
  result=result.replace(/\bshall\b/gi,'must').replace(/\bmust not be greater than\b/gi,'must not exceed');
  if(!/[.!?]$/.test(result))result+='.';
- return capitalizeRequirement(actionExample(result));
+ return capitalizeRequirement(actionExample(cleanCaseText(result)));
 }
 function isNoise(line:string):boolean{
  if(LEGAL_NOTICE.test(line))return true;
