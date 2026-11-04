@@ -2,7 +2,7 @@ import {MAX_REVIEW_REQUIREMENTS,MAX_REVIEW_GAPS} from './document-limits';
 import {validateProcessReview,type ProcessReview} from './process-analysis';
 import type {RequirementGap,PageCoverage} from './document-analysis';
 import type {Case} from './model';
-import {actionTitle} from './case-title';
+import {actionTitle,cleanCaseText} from './case-title';
 
 export type ReviewRequirement={reference?:string;id:string;statement:string;source:string;included:boolean};
 export type RequirementReview={pageCoverage?:PageCoverage;testCasesWrittenFor?:string;processReview?:ProcessReview;gapDetails?:RequirementGap[];documentId:string;documentName:string;mode:'rules'|'ai';summary:string;gaps:string[];requirements:ReviewRequirement[];finalized:boolean};
@@ -13,7 +13,7 @@ export function requirementCaseSignature(review:RequirementReview):string {
 export function hasWrittenRequirementCases(review:RequirementReview,cases:Case[]):boolean {
  if(review.testCasesWrittenFor!==undefined)return review.testCasesWrittenFor===requirementCaseSignature(review);
  const selected=review.requirements.filter(r=>r.included);
- return selected.length>0&&selected.every(r=>cases.some(c=>c.requirementIds?.includes(r.reference||r.id)&&c.expected===r.statement));
+ return selected.length>0&&selected.every(r=>cases.some(c=>c.requirementIds?.includes(r.reference||r.id)&&cleanCaseText(c.expected)===cleanCaseText(r.statement)));
 }
 
 export function validateRequirementReview(value:any):asserts value is RequirementReview {
@@ -41,12 +41,18 @@ export function writeReviewedTestCases(review:RequirementReview):Case[] {
  };
  for(const r of review.requirements.filter(r=>r.included)){
   const label=r.reference||r.id;
-  const statement=r.statement.replace(/^\d+(?:\.\d+)*[.)]?\s+/,'');
+  const statement=cleanCaseText(r.statement).replace(/^\d+(?:\.\d+)*[.)]?\s+/,'');
   const subject=statement.match(/\b(NID|email|password|phone|date|amount|file|profile|permission|record)\b/i)?.[0]||'required behavior';
   const quoted=[...statement.matchAll(/[“"‘']([^“”"‘’']+)[”"’']/g)].map(m=>m[1]);
   const prohibited=/\b(must not|shall not|cannot|not allowed|reject|prevent|block)\b/i.test(statement);
-  add(r,prohibited?'negative':'positive',prohibited?'Enforce '+subject+' restrictions':statement,quoted.length?'Values listed in the requirement: '+quoted.join(', '):'The requirement does not give example values. Choose values that follow its rules.',
-   '1. Review requirement '+label+': '+statement+'\n2. Carry out the action in this requirement using valid data.\n3. Check that the result matches the requirement.',statement);
+  if(!/[\p{L}\p{N}]/u.test(statement))continue;
+  const regression=/\b(?:remain unchanged|continue to|as before|retain existing|preserve existing|backward compatibility)\b/i.test(statement);
+  const exception=/\b(?:timeout|times out|fails?|failure|unavailable|exception)\b/i.test(statement)&&/\b(?:if|when|on|in case of)\b/i.test(statement);
+  const edge=/\b(?:no (?:matches|results|records)|empty (?:list|set)|already exists|simultaneous|concurrent|first use|last remaining)\b/i.test(statement);
+  const kind=regression?'regression':exception?'exception':edge?'edge':prohibited?'negative':'positive';
+  const title=regression?'Retest '+actionTitle(statement).replace(/^(?:Test|Confirm|Validate|Check) /,''):prohibited?'Check that '+statement:statement;
+  add(r,kind,title,quoted.length?'Values listed in the requirement: '+quoted.join(', '):'The requirement does not give example values. Choose inputs that reproduce the condition described in the requirement.',
+   '1. Review requirement '+label+': '+statement+'\n2. Carry out the action in this requirement using the inputs and conditions described above.\n3. Check that the result matches the requirement.',statement);
   if(/\b(numeric|only digits)\b/i.test(statement))add(r,'negative','Reject nonnumeric '+subject,'Letters and symbols in the numeric '+subject+' field.','1. Enter nonnumeric content in '+subject+'.\n2. Carry out the action described in '+label+'.\n3. Check how the system handles the invalid value.','The system rejects letters and symbols, as required by '+label+': '+statement);
   if(/\b(mandatory|required)\b/i.test(statement))add(r,'negative','Reject missing '+subject,'Leave the required '+subject+' value empty.','1. Omit the required '+subject+' value.\n2. Carry out the action described in '+r.id+'.\n3. Check that the system asks for the missing value.','The system requires a value for this field. Requirement: '+statement);
 

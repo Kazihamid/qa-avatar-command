@@ -67,6 +67,15 @@ assert.equal(hasWrittenRequirementCases({...written,requirements:[...written.req
 assert.equal(hasWrittenRequirementCases({...written,requirements:written.requirements.map(r=>({...r,statement:r.statement+' Changed.'}))},[]),false);
 assert.equal(hasWrittenRequirementCases(final,writeReviewedTestCases(final)),true);
 const cases=writeReviewedTestCases(final);
+const coverageCases=writeReviewedTestCases({...final,requirements:[
+ {id:'1',statement:'\uF081 The system must display a retry message when the request times out.',source:'Page 2',included:true},
+ {id:'2',statement:'The system must display an empty list when there are no matches.',source:'Page 3',included:true},
+ {id:'3',statement:'The existing approval flow must remain unchanged.',source:'Page 4',included:true}
+]});
+assert.deepEqual(coverageCases.map(c=>c.source.split(' / ').at(-1)),['exception','edge','regression']);
+assert.equal(coverageCases[0].title,'Display a retry message');
+assert.ok(!JSON.stringify(coverageCases).includes('\uF081'));
+
 assert.ok(cases.length>=5);
 assert.ok(cases.every(c=>c.requirementIds.length===1&&c.requirementIds[0]===analysis.requirements[0].reference));
 assert.ok(cases.every(c=>c.title&&c.preconditions&&c.testData&&c.steps&&c.expected&&c.actual===''));

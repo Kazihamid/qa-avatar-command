@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import {cleanCaseText} from './case-title';
 import type {Case} from './model';
 
 export async function createTestCaseWorkbook(cases:Case[]):Promise<Uint8Array> {
@@ -7,13 +8,13 @@ export async function createTestCaseWorkbook(cases:Case[]):Promise<Uint8Array> {
  const sheet=workbook.addWorksheet('Test Cases',{views:[{state:'frozen',ySplit:1}]});
  sheet.columns=[
   {header:'No.',key:'number',width:7},{header:'Case ID',key:'id',width:20},
-  {header:'Requirement Reference',key:'reference',width:45},{header:'Test Scenario',key:'title',width:55},
-  {header:'Preconditions',key:'preconditions',width:45},{header:'Test Data',key:'testData',width:40},
-  {header:'Steps',key:'steps',width:60},{header:'Expected Result',key:'expected',width:55},
+  {header:'Requirement Reference',key:'reference',width:45},{header:'Test Case Title',key:'title',width:55},
+  {header:'Precondition',key:'preconditions',width:45},{header:'Steps',key:'steps',width:60},
+  {header:'Test Data',key:'testData',width:40},{header:'Expected Result',key:'expected',width:55},
   {header:'Actual Result',key:'actual',width:45},{header:'Priority',key:'priority',width:14},
   {header:'Status',key:'status',width:22},{header:'Evidence',key:'evidence',width:40}
  ];
- cases.forEach((c,index)=>sheet.addRow({...c,number:index+1,reference:c.requirementIds?.join('\n')||c.source,preconditions:c.preconditions||'',testData:c.testData||''}));
+ cases.forEach((c,index)=>sheet.addRow({...c,number:index+1,reference:c.requirementIds?.join('\n')||c.source,title:cleanCaseText(c.title),preconditions:cleanCaseText(c.preconditions||''),steps:cleanCaseText(c.steps),testData:cleanCaseText(c.testData||''),expected:cleanCaseText(c.expected)}));
  sheet.eachRow(row=>{row.alignment={vertical:'top',wrapText:true};});
  const header=sheet.getRow(1);header.height=26;
  header.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1B4CC2'}};});
