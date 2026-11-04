@@ -31,7 +31,7 @@ assert.equal(ratingAction,'Use 11.5 without rounding and assign score of C as fi
 assert.match(actionTitle(ratingExample),/^Use /);
 assert.ok(!actionTitle(ratingExample).includes('Example'));
 assert.equal(analyzeRequirements('Requirements\n'+ratingExample,'Ratings.pdf').requirements[0].statement,ratingAction);
-assert.ok(actionTitle('A'.repeat(300),150).length<=150);
+assert.equal(actionTitle('Check that when an Entity is inactive, the system must not display it for new Programme mapping.'),'Check that when an Entity is inactive, the system must not display it for new Programme mapping');
 
 const analysis=analyzeRequirements([
  'Test Title CR_Duplicate NID Allow During Profile Creation',
@@ -52,7 +52,7 @@ assert.ok(analysis.gaps.some(g=>g.includes('disagree:')));
 assert.ok(!analysis.requirements.some(r=>r.statement.includes('Test Title')||r.statement.includes('auditable')));
 assert.throws(()=>analyzeRequirements('Test Title CR_Duplicate NID Allow During Profile Creation\nDescription\nProviding an auditable override path for inactive records.','CR.pdf'),/No explicit requirements/);
 assert.equal(actionTitle('The system must display matching NID details when a duplicate is entered.'),'Display matching NID details');
-assert.ok(actionTitle('Display '+Array(30).fill('details').join(' ')).length<=90);
+assert.equal(actionTitle('Assign Personal File access to the PIN for employees belonging to the selected Entity.'),'Assign Personal File access to the PIN for employees belonging to the selected Entity');
 console.log('Requirement analysis checks passed: zero generated cases, contextual text excluded, ambiguity, conflict and incomplete behavior identified.');
 const reviewModule=compile('../lib/requirement-review.ts').replace("'./document-limits'",JSON.stringify(limitsUrl)).replace("'./process-analysis'",JSON.stringify(processUrl)).replace("'./case-title'",JSON.stringify(titleUrl));
 const {writeReviewedTestCases,validateRequirementReview,requirementCaseSignature,hasWrittenRequirementCases}=await import(moduleUrl(reviewModule));
@@ -79,7 +79,7 @@ assert.ok(!JSON.stringify(coverageCases).includes('\uF081'));
 assert.ok(cases.length>=5);
 assert.ok(cases.every(c=>c.requirementIds.length===1&&c.requirementIds[0]===analysis.requirements[0].reference));
 assert.ok(cases.every(c=>c.title&&c.preconditions&&c.testData&&c.steps&&c.expected&&c.actual===''));
-assert.ok(cases.every(c=>c.title.length<=90&&c.title.split(/\s+/).length<=12));
+assert.ok(cases.every(c=>!/^Check that$/i.test(c.title)));
 assert.ok(cases.some(c=>c.source.endsWith('/ positive')));
 assert.ok(cases.some(c=>c.source.endsWith('/ negative')));
 assert.equal(cases.filter(c=>c.source.endsWith('/ boundary')).length,3);
