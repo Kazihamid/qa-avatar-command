@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,resolve,sep} from 'node:path';
+import {makeCodexBatch,approvalSignature,validateCodexBatch,validateCodexPlan,assertCurrentBatch,applyCodexResults,codexReport} from '../dist/codex/model.mjs';
+import {chromium,runBrowserCase} from '../dist/codex/runner.mjs';
+
+const root=await mkdtemp(join(tmpdir(),'qa-codex-check-'));
+const server=http.createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<label>Name<input id="name"></label><button onclick="document.querySelector(\'#result\').textContent=\'Saved\'">Save</button><p id="result">Ready</p>');});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+const origin='http://127.0.0.1:'+server.address().port;
+const c={id:'CASE-1',title:'Save a name',preconditions:'The form is open',testData:'Alice',steps:'Enter Alice and save.',expected:'Show Saved',status:'Not run',priority:'Medium',source:'Requirements 1',actual:'',evidence:''};
+const project={id:'p1',name:'Local smoke test',environment:origin,build:'test',avatarId:'a1',requirements:'',cases:[c],bugs:[]};
+const batch=makeCodexBatch(project,[c.id]);
+const step=(action,locator='',value='')=>({action,by:'css',locator,name:'',value});
+const plan=[{caseId:c.id,mode:'browser',reason:'Use the local form.',steps:[step('fill','#name','Alice'),step('click','button'),step('text','#result','Saved')]}];
+validateCodexPlan(plan,batch);
+assert.throws(()=>validateCodexPlan([{...plan[0],steps:[step('click','button')]}],batch),/observable assertion/);
+assert.throws(()=>validateCodexPlan([{...plan[0],steps:[step('navigate','','https://example.invalid'),step('text','#result','Saved')]}],batch),/approved test environment/);
+assert.throws(()=>validateCodexBatch({...batch,status:'approved',plan}),/Approve/);
+assert.throws(()=>assertCurrentBatch(batch,{...project,environment:origin+'/changed'}),/changed/);
+assert.throws(()=>assertCurrentBatch(batch,{...project,cases:[{...c,expected:'Changed'}]}),/changed/);
+assert.throws(()=>makeCodexBatch({...project,cases:[]},[c.id]),/Select/);
+assert.throws(()=>makeCodexBatch(project,[c.id,'unknown']),/Select/);
+let browser;
+try {
+ browser=await chromium.launch({headless:true});
+ const passed=await runBrowserCase(browser,batch,plan[0],join(root,'pass'));
+ assert.equal(passed.status,'Pass');assert.equal(passed.assertions,1);
+ assert.ok((await readFile(join(passed.evidence,'trace.zip'))).length>100);
+ assert.ok((await readFile(join(passed.evidence,'result.png'))).length>100);
+ const failed=await runBrowserCase(browser,batch,{...plan[0],steps:[step('text','#result','Wrong')]},join(root,'fail'));
+ assert.equal(failed.status,'Fail');assert.equal(failed.assertions,0);
+ const blocked=await runBrowserCase(browser,batch,{...plan[0],steps:[step('click','#missing'),step('text','#result','Saved')]},join(root,'blocked'));
+ assert.equal(blocked.status,'Blocked');
+ const approved={...batch,status:'approved',plan};approved.approval=approvalSignature(approved);validateCodexBatch(approved);
+ const finished={...approved,status:'completed',results:[passed],finishedAt:new Date().toISOString()};finished.report=codexReport(finished);
+ validateCodexBatch(finished);
+ const saved=applyCodexResults(project,finished);assert.equal(saved.cases[0].status,'Pass');
+ assert.ok(saved.codex.report.includes('Pass — 1'));
+ const failure={...finished,results:[failed]};failure.report=codexReport(failure);
+ assert.equal(applyCodexResults(project,failure).bugs.length,1);
+ assert.equal(applyCodexResults(applyCodexResults(project,failure),failure).bugs.length,1);
+ assert.throws(()=>validateCodexBatch({...finished,results:[{...passed,assertions:0}]}),/Invalid Codex execution/);
+ assert.throws(()=>validateCodexBatch({...finished,plan:[{...plan[0],reason:'Edited after approval'}]}),/Approve/);
+ assert.throws(()=>applyCodexResults({...project,cases:[{...c,steps:'Changed'}]},finished),/changed/);
+ console.log('Codex execution checks passed: explicit approval, complete coverage, stale plan protection, real browser pass/fail/blocked outcomes, screenshots, traces, results, reports and defect updates.');
+}finally {
+ await browser?.close();await new Promise(resolve=>server.close(resolve));
+ const full=resolve(root);assert.ok(full.startsWith(resolve(tmpdir())+sep));await rm(full,{recursive:true,force:true});
+}

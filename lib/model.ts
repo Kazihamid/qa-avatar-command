@@ -1,3 +1,4 @@
+import {validateCodexBatch,type CodexBatch} from './codex-execution';
 import {validateRequirementReview,type RequirementReview} from './requirement-review';
 import {validateWorkflow,workflowReport,workflow,type Workflow} from './lifecycle';
 import {validateExecution,type ExecutionConfig} from './execution-model';
@@ -5,7 +6,7 @@ export const statuses=['Not run','Pass','Fail','Blocked','Needs clarification'] 
 export type Case={preconditions?:string;testData?:string;requirementIds?:string[];id:string;title:string;steps:string;expected:string;actual:string;status:string;priority:string;source:string;evidence:string};
 export type Avatar={id:string;name:string;role:string;color:string};
 export type Bug={id:string;title:string;severity:string;status:string;caseId:string;details:string};
-export type Project={id:string;name:string;environment:string;build:string;avatarId:string;requirements:string;cases:Case[];bugs:Bug[];execution?:ExecutionConfig;requirementReview?:RequirementReview;workflow?:Workflow};
+export type Project={id:string;name:string;environment:string;build:string;avatarId:string;requirements:string;cases:Case[];bugs:Bug[];execution?:ExecutionConfig;codex?:CodexBatch;requirementReview?:RequirementReview;workflow?:Workflow};
 export type Workspace={avatars:Avatar[];projects:Project[]};
 export function validateState(s:any): asserts s is Workspace {
  if(!s||!Array.isArray(s.avatars)||!Array.isArray(s.projects)||s.avatars.length>30||s.projects.length>50) throw new Error('Invalid workspace');
@@ -14,6 +15,7 @@ export function validateState(s:any): asserts s is Workspace {
  for(const a of s.avatars){for(const k of ['id','name','role','color'])str(a[k],300);if(!/^#[0-9a-fA-F]{6}$/.test(a.color))throw new Error('Invalid avatar color');if(!a.name.trim())throw new Error('Avatar name required');}
  for(const p of s.projects){for(const k of ['id','name','environment','build','avatarId'])str(p[k],1000);str(p.requirements,100000);if(!p.name.trim())throw new Error('Project name required');if(p.avatarId&&!s.avatars.some((a:any)=>a.id===p.avatarId))throw new Error('Unknown avatar');if(!Array.isArray(p.cases)||!Array.isArray(p.bugs)||p.cases.length>2000||p.bugs.length>1000)throw new Error('Invalid cases/bugs');unique(p.cases);unique(p.bugs);
  if(p.requirementReview)validateRequirementReview(p.requirementReview);
+ if(p.codex){validateCodexBatch(p.codex);if(p.codex.projectId!==p.id)throw new Error('Invalid Codex project.');}
  if(p.execution)validateExecution(p.execution,p.id,p.cases.map((c:any)=>c.id));
  for(const c of p.cases){for(const k of ['id','title','steps','expected','actual','status','priority','source','evidence'])str(c[k]);for(const k of ['preconditions','testData'])if(c[k]!==undefined)str(c[k]);if(c.requirementIds!==undefined&&(!Array.isArray(c.requirementIds)||c.requirementIds.length>100||c.requirementIds.some((id:unknown)=>typeof id!=='string'||id.length>1000)))throw new Error('Invalid requirement traceability');if(!statuses.includes(c.status as any)||!['High','Medium','Low'].includes(c.priority)||!c.title.trim())throw new Error('Invalid test case');}
  for(const b of p.bugs){for(const k of ['id','title','severity','status','caseId','details'])str(b[k]);if(!['High','Medium','Low'].includes(b.severity)||!['Open','Fixed','Closed'].includes(b.status))throw new Error('Invalid defect');}

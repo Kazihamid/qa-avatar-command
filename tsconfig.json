@@ -37,7 +37,8 @@
     "vite.config.ts",
     "vite.server.config.ts",
     "cloudflare",
-    "vite.cloudflare.config.ts"
+    "vite.cloudflare.config.ts",
+    "vite.codex.config.ts"
   ],
   "exclude": [
     "node_modules",

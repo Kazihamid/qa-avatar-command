@@ -6,7 +6,7 @@ Runs on your own computer: no ChatGPT, no Cloudflare, no sign-in. Same features 
 version (QA lifecycle, manual execution, defect register, requirement analysis, final report),
 plus a **direct connection to your Autonomous QA Execution Agent** so you do not need the bridge script or file handoff.
 
-Your data is stored in the `data/` folder next to the app. Nothing leaves your computer unless you turn on AI Review.
+Your data is stored in the `data/` folder next to the app. AI Review sends document text to OpenAI when enabled. Codex preparation sends the selected case definitions and inspected page snapshots to your Codex account.
 
 ## 1. Install (once)
 You need **Node.js 22.13 or newer** (LTS from https://nodejs.org). Check with `node -v`.
@@ -83,3 +83,33 @@ On the Test Cases tab, choose **Export To Excel**. Selected cases are exported, 
 
 ## Cloudflare hosting
 See [CLOUDFLARE.md](CLOUDFLARE.md) for the private deployment, free-tier storage limits and deployment commands. Local and cloud workspaces are separate.
+
+## Codex execution companion
+
+The Execution tab includes **Execute With Codex**. Select up to 10 reviewed cases and choose **Prepare With Codex**. The companion uses Codex to inspect your test environment and prepare browser actions. Review those actions and the listed test data, then choose **Approve & Run** for the batch. Results and a Markdown test report appear in the app automatically. Cases missing setup, test data or observable checks explain what needs review.
+
+The companion runs on your computer and connects to either your Cloudflare workspace or your local app. Keep your PC and its companion terminal running during preparation and execution. Preparation uses your current Codex account and its usage allowance.
+
+Set up once in the repository folder:
+
+    npm install
+    npm run codex:login
+    npm run codex:setup
+
+Copy the Codex companion settings from .env.example into your local .env. Set QA_AVATAR_URL to your app address. For Cloudflare, set QA_AVATAR_USER and QA_AVATAR_PASSWORD to your app login. Enter these only in your local file. Start the companion:
+
+    npm run codex:worker
+
+To test an application that requires sign-in, save a browser session locally first:
+
+    npx playwright codegen --save-storage=data/codex-auth.json https://your-test-environment.example
+
+Sign in in that browser, close it, set QA_CODEX_STORAGE_STATE=data/codex-auth.json in .env, and restart the companion. Authentication state, screenshots and traces stay in the ignored data/ folder. The cloud report contains local evidence references.
+
+Codex receives the selected case definitions and page snapshots to prepare actions. The companion starts a browser inspection MCP server for that Codex invocation. Its inspection tool uses GET requests and exposes no form submission tools. Execution uses a fixed set of Playwright actions and observable assertions after batch approval. It can also reuse scenarios already mapped to the local agent.
+
+Each run is recorded in data/codex-runs/<run-id>/. Open report.md for the report, results.json for the complete result file and each case folder for screenshots, errors and trace.zip. Inspect a trace using npx playwright show-trace followed by its file path.
+
+Completed batches update case outcomes and create defect drafts for failed checks. Changing the environment, build, assignment or selected case definitions invalidates a pending batch. An interrupted execution is kept for inspection and requires a new batch for another attempt. Cancel Batch stops further browser cases when the companion checks the request again. An action or mapped agent run already in progress may finish.
+
+After pulling future changes, run npm install and npm run codex:setup again to rebuild the companion.
