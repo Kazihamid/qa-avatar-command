@@ -18,7 +18,7 @@ export async function inspectPreparationPage(browserPath:string,environment:stri
     const listed=await client.listTools();
     if(!listed.tools.some(tool=>tool.name==='inspect_page'))throw new Error('Browser inspection did not expose the required tool.');
     const result=await client.callTool({name:'inspect_page',arguments:{url:environment}});
-    if(result.isError)throw new Error('The browser could not inspect the test environment.');
+    if(result.isError){const details=result.content as {type:string;text?:string}[];throw new Error(details.filter(item=>item.type==='text').map(item=>item.text||'').join('\n')||'The browser could not inspect the test environment.');}
     const content=result.content as {type:string;text?:string}[];
     const text=content.filter(item=>item.type==='text').map(item=>item.text||'').join('\n');
     if(!text.trim())throw new Error('Browser inspection returned no page content.');
@@ -26,7 +26,9 @@ export async function inspectPreparationPage(browserPath:string,environment:stri
    })(),
    new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('Browser inspection timed out.')),75000);})
   ]);
- }catch {
+ }catch(error) {
+  console.error('Browser inspection failed:',(error as Error).message);
+  if(/timed.?out|timeout/i.test((error as Error).message))throw new Error('The test environment could not be reached or did not finish loading in time. Check that it opens from this computer, then prepare this batch again.');
   throw new Error('Browser inspection could not start or read the test environment. Run npm run codex:setup, check the environment URL and any saved browser sign-in, then prepare this batch again.');
  }finally {
   clearTimeout(timer);await client.close().catch(()=>{});

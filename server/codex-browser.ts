@@ -17,7 +17,8 @@ server.tool('inspect_page','Read the accessibility tree and form field selectors
  if(new URL(url).origin!==origin)throw new Error('Only the approved environment can be inspected.');
  const page=await context.newPage();
  try {
-  await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+  await page.goto(url,{waitUntil:'commit',timeout:45000});
+  await page.waitForFunction(()=>!!document.body?.innerText.trim(),{},{timeout:20000});
   const snapshot=await page.locator('body').ariaSnapshot({timeout:10000});
   const fields=await page.locator('input,select,textarea').evaluateAll(elements=>elements.slice(0,60).map(e=>({tag:e.tagName,id:e.id,name:e.getAttribute('name'),type:e.getAttribute('type'),placeholder:e.getAttribute('placeholder')})));
   return {content:[{type:'text' as const,text:JSON.stringify({url:page.url(),snapshot:snapshot.slice(0,30000),fields})}]};
