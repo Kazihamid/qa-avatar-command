@@ -24,7 +24,7 @@ export async function inspectPreparationPage(browserPath:string,environment:stri
     if(!text.trim())throw new Error('Browser inspection returned no page content.');
     return text;
    })(),
-   new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('Browser inspection timed out.')),45000);})
+   new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('Browser inspection timed out.')),75000);})
   ]);
  }catch {
   throw new Error('Browser inspection could not start or read the test environment. Run npm run codex:setup, check the environment URL and any saved browser sign-in, then prepare this batch again.');

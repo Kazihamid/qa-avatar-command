@@ -66,7 +66,7 @@ async function prepare(batch:CodexBatch,directory:string):Promise<CodexPlan[]> {
  for(const name of Object.keys(env))if(name.startsWith('QA_')||['OPENAI_API_KEY','CODEX_API_KEY'].includes(name))delete env[name];
  const args=['exec','--ignore-user-config','--disable','shell_tool','--sandbox','read-only','--skip-git-repo-check','--ephemeral','--color','never','--output-schema',schemaPath,'--output-last-message',output,'-c','mcp_servers.qa_browser='+JSON.stringify(config),'-'];
  // TOML inline objects use "=" rather than JSON's ":".
- args[args.length-2]='mcp_servers.qa_browser={command='+JSON.stringify(config.command)+',args='+JSON.stringify(config.args)+',required=true,env={QA_CODEX_TARGET_ORIGIN='+JSON.stringify(config.env.QA_CODEX_TARGET_ORIGIN)+(storageState?',QA_CODEX_STORAGE_STATE='+JSON.stringify(storageState):'')+'}}';
+ args[args.length-2]='mcp_servers.qa_browser={command='+JSON.stringify(config.command)+',args='+JSON.stringify(config.args)+',required=true,tool_timeout_sec=90,enabled_tools=["inspect_page"],default_tools_approval_mode="writes",env={QA_CODEX_TARGET_ORIGIN='+JSON.stringify(config.env.QA_CODEX_TARGET_ORIGIN)+(storageState?',QA_CODEX_STORAGE_STATE='+JSON.stringify(storageState):'')+'}}';
  const prompt=[
   'Prepare a reviewable Playwright execution plan for QA Avatar Command. Do not execute tests.',
   'The qa_browser MCP server provides inspect_page. Use tool discovery or tool search to find it if it is not initially listed, then inspect additional pages only through that tool. Do not use shell tools or submit forms.',

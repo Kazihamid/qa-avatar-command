@@ -53,7 +53,7 @@ try {
  const initialSnapshot=await inspectPreparationPage(resolve('dist/codex/browser.mjs'),origin);
  assert.ok(initialSnapshot.includes('Companion fixture'));
  await client.connect(transport);
- const tools=await client.listTools();assert.deepEqual(tools.tools.map(t=>t.name),['inspect_page']);
+ const tools=await client.listTools();assert.deepEqual(tools.tools.map(t=>t.name),['inspect_page']);assert.equal(tools.tools[0].annotations.readOnlyHint,true);assert.equal(tools.tools[0].annotations.destructiveHint,false);
  const snapshot=await client.callTool({name:'inspect_page',arguments:{url:origin}});
  assert.equal(snapshot.isError,undefined);
  assert.ok(snapshot.content[0].text.includes('Companion fixture'));
