@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import {spawn} from 'node:child_process';
-import {mkdtemp,rm,readFile} from 'node:fs/promises';
+import {mkdtemp,rm,readFile,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve,sep} from 'node:path';
 import {inspectPreparationPage} from '../dist/codex/preparation.mjs';
@@ -31,6 +31,7 @@ const server=http.createServer(async(req,res)=>{
   runs++;return reply({results:[{scenarioId,status:'PASSED',exitCode:0,durationMs:20,stdout:'1 passed',stderr:''}]});
  }
  if(req.url==='/write'){writes++;return reply({ok:true});}
+ if(req.url==='/long-navigation'){res.setHeader('Content-Type','text/html');res.end('<nav>'+Array.from({length:700},(_,i)=>'<a href="/menu/'+i+'">Long navigation item '+i+'</a>').join('')+'</nav><form><label>Objective start date<input name="objectiveStart"></label></form>');return;}
  res.setHeader('Content-Type','text/html');
  res.end('<h1>Companion fixture</h1><label>Name<input id="name"></label><script>fetch("/write",{method:"POST"})</script>');
 });
@@ -52,6 +53,10 @@ const waitFor=async(predicate,label)=>{
 try {
  const initialSnapshot=await inspectPreparationPage(resolve('dist/codex/browser.mjs'),origin);
  assert.ok(initialSnapshot.includes('Companion fixture'));
+ const editorSnapshot=JSON.parse(await inspectPreparationPage(resolve('dist/codex/browser.mjs'),origin+'/long-navigation'));
+ assert.ok(editorSnapshot.snapshot.includes('Objective start date'));assert.ok(editorSnapshot.forms.some(form=>form.includes('Objective start date')));
+ const emptyState=join(temporary,'empty-auth.json');await writeFile(emptyState,JSON.stringify({cookies:[],origins:[]}));
+ await assert.rejects(()=>inspectPreparationPage(resolve('dist/codex/browser.mjs'),origin+'/login/duplicateUser',emptyState),/signed in elsewhere/);
  await client.connect(transport);
  const tools=await client.listTools();assert.deepEqual(tools.tools.map(t=>t.name),['inspect_page']);assert.equal(tools.tools[0].annotations.readOnlyHint,true);assert.equal(tools.tools[0].annotations.destructiveHint,false);
  const snapshot=await client.callTool({name:'inspect_page',arguments:{url:origin}});

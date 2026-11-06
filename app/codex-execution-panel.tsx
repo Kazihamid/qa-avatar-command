@@ -7,6 +7,7 @@ import {cleanCaseText} from '@/lib/case-title';
 import type {Project} from '@/lib/model';
 
 export default function CodexExecutionPanel({project,onSave,busy}:{project:Project;onSave:(p:Project)=>Promise<boolean>;busy:boolean}) {
+ const [entryUrl,setEntryUrl]=useState(project.codex?.entryUrl||'');
  const [selected,setSelected]=useState<string[]>([]),[reviewed,setReviewed]=useState(false);
  const batch=project.codex;
  const runnable=batch?.plan?.filter(entry=>entry.mode!=='manual').length||0;
@@ -15,7 +16,7 @@ export default function CodexExecutionPanel({project,onSave,busy}:{project:Proje
  let stale=false;
  if(batch)try{assertCurrentBatch(batch,project);}catch{stale=true;}
  async function prepare() {
-  try {const next=makeCodexBatch(project,selected);if(await onSave({...project,codex:next}))setReviewed(false);}
+  try {const next=makeCodexBatch(project,selected,entryUrl.trim());if(await onSave({...project,codex:next}))setReviewed(false);}
   catch(error){toast.error((error as Error).message);}
  }
  async function retryBatch() {
@@ -36,6 +37,7 @@ export default function CodexExecutionPanel({project,onSave,busy}:{project:Proje
  return <section className="content-panel codex-execution-panel">
   <div className="section-heading"><div><h3>Execute With Codex</h3><p>Select up to 10 reviewed cases. Codex prepares browser actions for your approval, then your computer runs them and sends the results here.</p></div></div>
   <p className="file-help">Start the Codex companion on your PC and keep it running for preparation and execution. It uses your Codex sign-in and usage allowance. <a href="https://github.com/Kazihamid/qa-avatar-command#codex-execution-companion" target="_blank" rel="noreferrer">Setup instructions</a></p>
+  <label className="field"><span>Test Page URL (Optional)</span><input type="url" value={entryUrl} disabled={busy||active} placeholder={project.environment} onChange={event=>setEntryUrl(event.target.value)}/></label>
   <div className="execution-actions"><Button variant="outline" disabled={busy||active||!project.cases.length} onClick={()=>setSelected(project.cases.slice(0,10).map(c=>c.id))}>Select First 10</Button><Button variant="outline" disabled={busy||active||!selected.length} onClick={()=>setSelected([])}>Deselect All</Button><span>{selected.length} selected</span></div>
   <div className="codex-case-picker">{project.cases.map(c=><label key={c.id}><input type="checkbox" checked={selected.includes(c.id)} disabled={busy||active||(!selected.includes(c.id)&&selected.length>=10)} onChange={e=>setSelected(previous=>e.target.checked?[...previous,c.id]:previous.filter(id=>id!==c.id))}/><span>{cleanCaseText(c.title)}</span></label>)}</div>
   <Button disabled={busy||active||!selected.length} onClick={prepare}>Prepare With Codex</Button>
@@ -44,6 +46,7 @@ export default function CodexExecutionPanel({project,onSave,busy}:{project:Proje
    <p>{needsAttention?'None of these '+batch.cases.length+' cases has an executable plan yet. Review the reasons below, resolve them, then prepare this batch again.':batch.message}</p>
    {batch.status==='review'&&<p>{runnable} ready to run · {(batch.plan?.length||0)-runnable} need attention</p>}
    <p className="file-help">Run {batch.runId} · {batch.cases.length} cases · {batch.environment}</p>
+   {batch.entryUrl&&<p className="file-help">Test page {batch.entryUrl}</p>}
    {stale&&<p>The cases or target environment changed. Prepare a new batch before executing.</p>}
    {batch.plan&&<div>{batch.plan.map(entry=><details key={entry.caseId} open={entry.mode==='manual'?true:undefined}><summary>{cleanCaseText(batch.cases.find(c=>c.id===entry.caseId)!.title)} · {entry.mode==='manual'?'Needs Review':entry.mode==='agent'?'Saved Scenario':'Browser Test'}</summary><p>{entry.reason}</p>{entry.steps.length>0&&<ol>{entry.steps.map((step,i)=><li key={i}>{({navigate:'Open Page',click:'Click',fill:'Enter',select:'Select',check:'Check',uncheck:'Uncheck',visible:'Confirm Visible',hidden:'Confirm Hidden',text:'Check Text',value:'Check Value',url:'Check Page Address',count:'Check Item Count'})[step.action]} {step.by==='role'?step.locator+' '+step.name:step.locator}{step.value?' — '+step.value:''}</li>)}</ol>}</details>)}</div>}
    {batch.status==='review'&&!needsAttention&&<><label className="codex-approval"><input key={batch.runId} type="checkbox" checked={reviewed} disabled={busy||stale} onChange={e=>setReviewed(e.target.checked)}/> I reviewed these cases, browser actions, test data and target environment. I approve this batch, including actions that change test records.</label><Button disabled={busy||stale||!reviewed||!runnable} onClick={approve}>Approve &amp; Run</Button></>}

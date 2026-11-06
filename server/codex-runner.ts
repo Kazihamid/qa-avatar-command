@@ -27,7 +27,7 @@ export async function runBrowserCase(browser:Browser,batch:CodexBatch,plan:Codex
   });
   await context.tracing.start({screenshots:true,snapshots:true,sources:false});
   const page=await context.newPage();page.setDefaultTimeout(10000);
-  await page.goto(batch.environment,{waitUntil:'domcontentloaded',timeout:20000});
+  await page.goto(batch.entryUrl||batch.environment,{waitUntil:'domcontentloaded',timeout:20000});
   for(const step of plan.steps) {
    actionIndex++;asserting=false;lastStep=step;
    if(step.action==='navigate'){await page.goto(new URL(step.value,batch.environment).href,{waitUntil:'domcontentloaded',timeout:20000});continue;}

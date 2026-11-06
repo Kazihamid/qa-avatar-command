@@ -7,6 +7,7 @@ export type CodexPlan={caseId:string;mode:'browser'|'agent'|'manual';reason:stri
 export type CodexResult={id:string;fingerprint:string;status:'Pass'|'Fail'|'Blocked'|'Needs clarification';actual:string;evidence:string;assertions:number};
 export type CodexBatch={
  format:'qa-avatar-codex-v1';runId:string;projectId:string;projectName:string;environment:string;build:string;avatarId:string;createdAt:string;
+ entryUrl?:string;
  status:'queued'|'preparing'|'review'|'approved'|'running'|'completed'|'error'|'cancelled';
  cases:(Case&{fingerprint:string})[];agent?:{workspaceId:string;applicationId:string;mappings:ScenarioLink[]};
  plan?:CodexPlan[];approval?:string;workerId?:string;message?:string;results?:CodexResult[];report?:string;finishedAt?:string;
@@ -20,12 +21,13 @@ export function executionOrigin(value:string):string {
  if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw new Error('Enter an HTTP or HTTPS test environment without credentials in its URL.');
  return url.origin;
 }
-export function makeCodexBatch(project:Project,caseIds:string[]):CodexBatch {
+export function makeCodexBatch(project:Project,caseIds:string[],entryUrl=project.codex?.entryUrl):CodexBatch {
  executionOrigin(project.environment);
+ if(entryUrl&&executionOrigin(entryUrl)!==executionOrigin(project.environment))throw new Error('The test page URL must belong to the configured test environment.');
  const cases=project.cases.filter(c=>caseIds.includes(c.id));
  if(!cases.length||cases.length!==new Set(caseIds).size||cases.length>10)throw new Error('Select between 1 and 10 test cases for this batch.');
  if(cases.some(c=>!c.steps.trim()||!c.expected.trim()))throw new Error('Add steps and expected results to the selected cases first.');
- return {format:'qa-avatar-codex-v1',runId:crypto.randomUUID(),projectId:project.id,projectName:project.name,environment:project.environment,build:project.build,avatarId:project.avatarId,createdAt:new Date().toISOString(),status:'queued',cases:cases.map(c=>({...c,fingerprint:fingerprint(c)})),
+ return {format:'qa-avatar-codex-v1',runId:crypto.randomUUID(),projectId:project.id,projectName:project.name,environment:project.environment,build:project.build,avatarId:project.avatarId,createdAt:new Date().toISOString(),status:'queued',...(entryUrl?{entryUrl}:{}),cases:cases.map(c=>({...c,fingerprint:fingerprint(c)})),
  ...(project.execution?{agent:{workspaceId:project.execution.workspaceId,applicationId:project.execution.applicationId,mappings:project.execution.mappings.filter(m=>caseIds.includes(m.caseId))}}:{})};
 }
 export function assertCurrentBatch(batch:CodexBatch,project:Project) {
@@ -48,10 +50,11 @@ export function validateCodexPlan(plan:unknown,batch:CodexBatch):asserts plan is
   if(entry.mode==='browser'&&!entry.steps.some((step:BrowserStep)=>assertionActions.has(step.action)))throw new Error('Each browser case needs an observable assertion.');
  }
 }
-export const approvalSignature=(batch:CodexBatch)=>JSON.stringify([batch.runId,batch.environment,batch.build,batch.cases.map(c=>c.fingerprint),batch.plan]);
+export const approvalSignature=(batch:CodexBatch)=>JSON.stringify([batch.runId,batch.environment,batch.build,batch.cases.map(c=>c.fingerprint),batch.plan,...(batch.entryUrl?[batch.entryUrl]:[])]);
 export function validateCodexBatch(batch:any):asserts batch is CodexBatch {
  if(!batch||batch.format!=='qa-avatar-codex-v1'||!text(batch.runId,36)||!/^[0-9a-f-]{36}$/i.test(batch.runId)||!text(batch.projectId,1000)||!text(batch.projectName,1000)||!text(batch.environment,1000)||!text(batch.build,1000)||!text(batch.avatarId,1000)||!text(batch.createdAt,100)||!statuses.includes(batch.status)||!Array.isArray(batch.cases)||!batch.cases.length||batch.cases.length>10||new Set(batch.cases.map((c:any)=>c.id)).size!==batch.cases.length)throw new Error('Invalid Codex batch.');
  executionOrigin(batch.environment);
+ if(batch.entryUrl!==undefined&&(!text(batch.entryUrl,3000)||executionOrigin(batch.entryUrl)!==executionOrigin(batch.environment)))throw new Error('Invalid test page URL.');
  for(const c of batch.cases) {
   for(const field of ['id','title','steps','expected','source'])if(!text(c[field]))throw new Error('Invalid Codex case snapshot.');
   if(!text(c.fingerprint,85000)||c.fingerprint!==fingerprint(c))throw new Error('Invalid Codex case fingerprint.');
