@@ -113,3 +113,5 @@ Each run is recorded in data/codex-runs/<run-id>/. Open report.md for the report
 Completed batches update case outcomes and create defect drafts for failed checks. Changing the environment, build, assignment or selected case definitions invalidates a pending batch. An interrupted execution is kept for inspection and requires a new batch for another attempt. Cancel Batch stops further browser cases when the companion checks the request again. An action or mapped agent run already in progress may finish.
 
 After pulling future changes, run npm install and npm run codex:setup again to rebuild the companion.
+
+When every case needs attention, the execution panel shows the preparation reasons and offers Prepare This Batch Again. Approve & Run becomes available once at least one case has an executable plan. The companion verifies browser inspection before asking Codex to prepare a plan. Restart the companion after rebuilding it to apply updates.

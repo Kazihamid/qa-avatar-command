@@ -41,7 +41,9 @@ jobs:
           npx playwright install --with-deps chromium
           npm run test:codex
       - name: Verify local API integration
-        run: npm run test:review-api
+        run: |
+          npm run test:review-api
+          node scripts/test-codex-ui.mjs
       - name: Build Cloudflare Worker and website
         run: npm run build:cloudflare
       - name: Apply migrations and deploy

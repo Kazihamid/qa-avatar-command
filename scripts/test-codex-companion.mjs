@@ -4,6 +4,7 @@ import {spawn} from 'node:child_process';
 import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve,sep} from 'node:path';
+import {inspectPreparationPage} from '../dist/codex/preparation.mjs';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {makeCodexBatch,approvalSignature,validateCodexBatch} from '../dist/codex/model.mjs';
@@ -49,6 +50,8 @@ const waitFor=async(predicate,label)=>{
  throw new Error('Timeout waiting for '+label+'\n'+logs);
 };
 try {
+ const initialSnapshot=await inspectPreparationPage(resolve('dist/codex/browser.mjs'),origin);
+ assert.ok(initialSnapshot.includes('Companion fixture'));
  await client.connect(transport);
  const tools=await client.listTools();assert.deepEqual(tools.tools.map(t=>t.name),['inspect_page']);
  const snapshot=await client.callTool({name:'inspect_page',arguments:{url:origin}});

@@ -60,6 +60,7 @@ export function validateCodexBatch(batch:any):asserts batch is CodexBatch {
  for(const field of ['approval','report'])if(batch[field]!==undefined&&!text(batch[field],500000))throw new Error('Codex report or approval is too large.');
  for(const field of ['workerId','message','finishedAt'])if(batch[field]!==undefined&&!text(batch[field],3000))throw new Error('Invalid Codex batch metadata.');
  if(['approved','running','completed'].includes(batch.status)&&(!batch.plan||batch.approval!==approvalSignature(batch)))throw new Error('Approve the current execution plan before running.');
+ if(['approved','running','completed'].includes(batch.status)&&batch.plan?.every((entry:CodexPlan)=>entry.mode==='manual'))throw new Error('Prepare at least one executable case before approving this batch.');
  if(batch.results!==undefined) {
   if(!Array.isArray(batch.results)||batch.results.length!==batch.cases.length||new Set(batch.results.map((r:any)=>r.id)).size!==batch.cases.length)throw new Error('Results must include every case exactly once.');
   for(const r of batch.results) {
