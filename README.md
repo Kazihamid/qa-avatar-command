@@ -117,3 +117,5 @@ After pulling future changes, run npm install and npm run codex:setup again to r
 When every case needs attention, the execution panel shows the preparation reasons and offers Prepare This Batch Again. Approve & Run becomes available once at least one case has an executable plan. The companion verifies browser inspection before asking Codex to prepare a plan. Restart the companion after rebuilding it to apply updates.
 
 For assessment screens that use a URL fragment, enter the complete address in Test Page URL before preparing the batch. That address is included in the batch approval and used for inspection and execution. If HRMS reports that another device signed in, refresh the saved Playwright session and use that account in one browser during the run.
+
+Use Batch Test Data to supply values shared by the selected cases. Changing those values requires a new plan and approval. If an app loads dropdowns or templates through POST queries, configure only its verified read-only paths in QA_CODEX_READ_POST_PATHS in the companion settings. The inspector limits those queries to the test environment origin.

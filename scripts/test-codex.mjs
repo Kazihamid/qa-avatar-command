@@ -41,6 +41,7 @@ try {
  const blocked=await runBrowserCase(browser,batch,{...plan[0],steps:[step('click','#missing'),step('text','#result','Saved')]},join(root,'blocked'));
  assert.equal(blocked.status,'Blocked');
  const approved={...batch,status:'approved',plan};approved.approval=approvalSignature(approved);validateCodexBatch(approved);
+ assert.throws(()=>validateCodexBatch({...approved,testData:'Changed after approval'}),/Approve/);
  const finished={...approved,status:'completed',results:[passed],finishedAt:new Date().toISOString()};finished.report=codexReport(finished);
  validateCodexBatch(finished);
  const saved=applyCodexResults(project,finished);assert.equal(saved.cases[0].status,'Pass');

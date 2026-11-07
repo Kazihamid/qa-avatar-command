@@ -9,6 +9,7 @@ export async function inspectPreparationPage(browserPath:string,environment:stri
  for(const key of Object.keys(environmentVariables))if(key.startsWith('QA_')||['OPENAI_API_KEY','CODEX_API_KEY'].includes(key))delete environmentVariables[key];
  const transport=new StdioClientTransport({command:process.execPath,args:[browserPath],env:{
   ...environmentVariables,
+  ...(process.env.QA_CODEX_READ_POST_PATHS?{QA_CODEX_READ_POST_PATHS:process.env.QA_CODEX_READ_POST_PATHS}:{}),
   QA_CODEX_TARGET_ORIGIN:new URL(environment).origin,
   ...(storageState?{QA_CODEX_STORAGE_STATE:storageState}:{})
  },stderr:'pipe'});

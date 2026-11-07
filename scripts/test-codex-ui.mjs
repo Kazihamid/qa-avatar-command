@@ -49,6 +49,7 @@ try {
  assert.equal(await approve.isDisabled(),true);
  await page.getByRole('checkbox',{name:/I reviewed these cases/}).check();
  assert.equal(await approve.isEnabled(),true);
+ const dataField=page.getByLabel('Batch Test Data (Optional)');await dataField.fill('Changed inputs');assert.equal(await approve.isDisabled(),true);await dataField.fill('');assert.equal(await approve.isEnabled(),true);
  await approve.click();await page.getByText('Approved — Waiting For Companion',{exact:true}).waitFor();
  updated=await call();assert.equal(updated.state.projects[0].codex.status,'approved');
  console.log('Codex approval UI passed: all-manual reasons visible, no misleading run action, retry preserves cases, and executable batches enable only after review.');

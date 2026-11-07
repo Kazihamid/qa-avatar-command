@@ -10,7 +10,7 @@ import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {makeCodexBatch,approvalSignature,validateCodexBatch} from '../dist/codex/model.mjs';
 
 const temporary=await mkdtemp(join(tmpdir(),'qa-codex-worker-'));
-let workspace,revision=1,runs=0,writes=0;
+let workspace,revision=1,runs=0,writes=0,lookups=0;
 const scenarioId='11111111-1111-4111-8111-111111111111';
 const workspaceId='22222222-2222-4222-8222-222222222222';
 const applicationId='33333333-3333-4333-8333-333333333333';
@@ -30,6 +30,8 @@ const server=http.createServer(async(req,res)=>{
  if(req.url.endsWith('/scenario-actions/run')){
   runs++;return reply({results:[{scenarioId,status:'PASSED',exitCode:0,durationMs:20,stdout:'1 passed',stderr:''}]});
  }
+ if(req.url==='/lookup'&&req.method==='POST'){lookups++;return reply({value:'people',label:'People'});}
+ if(req.url==='/query-editor'){res.setHeader('Content-Type','text/html');res.end('<form><label>Objective Type<select></select></label></form><script>fetch("/lookup",{method:"POST"}).then(r=>r.json()).then(v=>document.querySelector("select").add(new Option(v.label,v.value)));fetch("/write",{method:"POST"})</script>');return;}
  if(req.url==='/write'){writes++;return reply({ok:true});}
  if(req.url==='/long-navigation'){res.setHeader('Content-Type','text/html');res.end('<nav>'+Array.from({length:700},(_,i)=>'<a href="/menu/'+i+'">Long navigation item '+i+'</a>').join('')+'</nav><form><label>Objective start date<input name="objectiveStart"></label></form>');return;}
  res.setHeader('Content-Type','text/html');
@@ -55,6 +57,9 @@ try {
  assert.ok(initialSnapshot.includes('Companion fixture'));
  const editorSnapshot=JSON.parse(await inspectPreparationPage(resolve('dist/codex/browser.mjs'),origin+'/long-navigation'));
  assert.ok(editorSnapshot.snapshot.includes('Objective start date'));assert.ok(editorSnapshot.forms.some(form=>form.includes('Objective start date')));
+ const savedReadPaths=process.env.QA_CODEX_READ_POST_PATHS;process.env.QA_CODEX_READ_POST_PATHS='/lookup';
+ try{const loaded=JSON.parse(await inspectPreparationPage(resolve('dist/codex/browser.mjs'),origin+'/query-editor'));assert.ok(loaded.forms.some(form=>form.includes('People')));assert.deepEqual(loaded.fields.find(field=>field.tag==='SELECT').options,[{label:'People',value:'people'}]);assert.equal(lookups,1);assert.equal(writes,0);}
+ finally{if(savedReadPaths===undefined)delete process.env.QA_CODEX_READ_POST_PATHS;else process.env.QA_CODEX_READ_POST_PATHS=savedReadPaths;}
  const emptyState=join(temporary,'empty-auth.json');await writeFile(emptyState,JSON.stringify({cookies:[],origins:[]}));
  await assert.rejects(()=>inspectPreparationPage(resolve('dist/codex/browser.mjs'),origin+'/login/duplicateUser',emptyState),/signed in elsewhere/);
  await client.connect(transport);
