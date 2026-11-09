@@ -221,4 +221,4 @@ body {
 .project-heading > div:last-child { flex-shrink: 0; }
 .project-heading h2 { white-space: normal; overflow-wrap: anywhere; }
 
-.codex-case-picker{display:grid;gap:.65rem;max-height:20rem;overflow:auto;margin:1rem 0}.codex-case-picker label,.codex-approval{display:flex;align-items:flex-start;gap:.65rem}.codex-case-picker span{min-width:0;overflow-wrap:anywhere}.codex-approval{margin:1rem 0}.codex-execution-panel details{margin:.65rem 0}.codex-execution-panel summary{overflow-wrap:anywhere}
+.codex-case-picker{display:grid;gap:.65rem;max-height:20rem;overflow:auto;margin:1rem 0}.codex-case-picker label,.codex-approval{display:flex;align-items:flex-start;gap:.65rem}.codex-case-picker span{min-width:0;overflow-wrap:anywhere}.codex-approval{margin:1rem 0}.codex-execution-panel details{margin:.65rem 0}.codex-execution-panel summary{overflow-wrap:anywhere}.field-help{color:#66788e;line-height:1.4}
